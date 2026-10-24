@@ -1,4 +1,4 @@
-"""Daily family briefing: 3-card layout (Weather, Advice, Events) + Birthday Cards.
+"""Daily family briefing: 3-card layout (Weather, Advice+Panchangam, Events) + Birthday Cards.
 
 Run daily:   python weather.py
 Run as watch: python weather.py --watch
@@ -34,15 +34,72 @@ def openmeteo(lat, lon):
         print("Open-Meteo unavailable:", exc)
         return None
 
-def get_moon_phase(dt):
-    ref = datetime(2024, 1, 11, 11, 57, tzinfo=timezone.utc)
-    days = (dt - ref).total_seconds() / 86400
-    phase = (days % 29.53058867) / 29.53058867
-    if phase < 0.04 or phase > 0.96:
-        return "Amavasya (New Moon) 🌑"
-    if 0.46 < phase < 0.54:
-        return "Purnima (Full Moon) 🌕"
-    return None
+def get_panchangam(dt):
+    """Calculates exact Hindu Tithi, Nakshatra, and Tamil Solar Month using planetary math."""
+    try:
+        import ephem
+        import math
+    except ImportError:
+        print("ephem library not installed. Skipping panchangam.")
+        return None
+
+    obs = ephem.Observer()
+    obs.date = dt.astimezone(timezone.utc)
+    sun = ephem.Sun(obs)
+    moon = ephem.Moon(obs)
+
+    # Convert to ecliptic degrees
+    sun_deg = math.degrees(ephem.Ecliptic(sun).lon)
+    moon_deg = math.degrees(ephem.Ecliptic(moon).lon)
+
+    # 1. Calculate Tithi (12 degrees separation = 1 Tithi)
+    diff = (moon_deg - sun_deg) % 360
+    tithi_num = int(diff / 12.0) + 1
+    tithis = ["Prathama", "Dwitiya", "Tritiya", "Chaturthi", "Panchami", "Shashti", "Saptami", "Ashtami", "Navami", "Dashami", "Ekadasi", "Dwadashi", "Trayodashi", "Chaturdashi", "Purnima",
+              "Prathama", "Dwitiya", "Tritiya", "Chaturthi", "Panchami", "Shashti", "Saptami", "Ashtami", "Navami", "Dashami", "Ekadasi", "Dwadashi", "Trayodashi", "Chaturdashi", "Amavasya"]
+    tithi_name = tithis[tithi_num - 1]
+
+    special = []
+    if tithi_name == "Amavasya": special.append("🌑 Amavasya (அமாவாசை)")
+    if tithi_name == "Purnima": special.append("🌕 Purnima (பௌர்ணமி)")
+    if tithi_name == "Ekadasi": special.append("🙏 Ekadasi (ஏகாதசி) - Fasting day")
+    if tithi_name == "Trayodashi":
+        if dt.weekday() == 5: # Saturday
+            special.append("🛕 Sani Pradosham (சனி பிரதோஷம்) - Go to Sivan temple")
+        else:
+            special.append("🛕 Pradosham (பிரதோஷம்) - Go to Sivan temple")
+    if tithi_name == "Chaturthi": special.append("🐘 Chaturthi (சதுர்த்தி) - Vinayagar worship")
+    if tithi_name == "Shashti": special.append("🦚 Shashti (சஷ்டி) - Murugan worship")
+    if tithi_name == "Ashtami": special.append("⚠️ Ashtami (அஷ்டமி)")
+    if tithi_name == "Navami": special.append("⚠️ Navami (நவமி)")
+
+    # 2. Calculate Nakshatram (13.33 degrees per Nakshatra)
+    ayanamsa = 24.15 # Approx Lahiri Ayanamsa for current years
+    nirayana_moon = (moon_deg - ayanamsa) % 360
+    nak_num = int(nirayana_moon / (360/27.0))
+    nakshatras = ["Aswini", "Bharani", "Karthigai", "Rohini", "Mrigasira", "Arudra", "Punarvasu", "Pushya", "Ashlesha",
+                  "Magam", "Pooram", "Uthiram", "Hastham", "Chithirai", "Swathi", "Visakam", "Anusham", "Kettai",
+                  "Moolam", "Pooradam", "Uthiradam", "Thiruvonam", "Avittam", "Sadayam", "Poorattadhi", "Uthirattadhi", "Revathi"]
+    nak_name = nakshatras[nak_num]
+
+    if nak_name == "Karthigai": special.append("🪔 Kiruthigai (கிருத்திகை)")
+    if nak_name == "Thiruvonam": special.append("🌸 Thiruvonam (திருவோணம்)")
+
+    # 3. Calculate Tamil Solar Month & Date
+    nirayana_sun = (sun_deg - ayanamsa) % 360
+    month_num = int(nirayana_sun / 30)
+    months = ["Chithirai", "Vaikasi", "Aani", "Aadi", "Avani", "Purattasi", "Aippasi", "Karthigai", "Margazhi", "Thai", "Masi", "Panguni"]
+    tamil_month = months[month_num]
+    
+    # Sun moves ~0.9856 degrees per day
+    rasi_deg = nirayana_sun % 30
+    day_num = int(rasi_deg / 0.9856) + 1
+
+    return {
+        "special": special,
+        "nakshatra": nak_name,
+        "tamil_date": f"{tamil_month} {day_num}"
+    }
 
 def fmt(dt): return dt.strftime("%I:%M %p").lstrip("0")
 def fmt_h(h): return f"{h % 12 or 12}:00 {'AM' if h < 12 else 'PM'}"
@@ -131,7 +188,8 @@ def collect():
     d = {"city": cur["name"], "now": now, "temp": cur["main"]["temp"], "feels": cur["main"]["feels_like"],
          "humidity": cur["main"]["humidity"], "cond": cur["weather"][0]["description"].title(),
          "main": cur["weather"][0]["main"], "night": night, "sunrise": sunrise, "sunset": sunset,
-         "aqi": aq["main"]["aqi"], "pm25": aq["components"]["pm2_5"], "moon": get_moon_phase(now)}
+         "aqi": aq["main"]["aqi"], "pm25": aq["components"]["pm2_5"], "panchangam": get_panchangam(now)}
+    
     d["t_min"] = min([s["main"]["temp_min"] for s in slots] + [d["temp"]])
     d["t_max"] = max([s["main"]["temp_max"] for s in slots] + [d["temp"]])
 
@@ -185,11 +243,6 @@ def collect():
 
     # Tamil Advice
     adv = []
-    if d.get("moon"): adv.append(("✨", f"இன்று {d['moon']}"))
-    for i in d["today"]:
-        if "temple" in i.get("kind", "") or "pradosham" in i.get("name", "").lower():
-            adv.append(("🛕", f"இன்று {i['name']} - சிவன் கோவிலுக்கு செல்லவும்"))
-            
     if d["uv"] and d["uv"] >= 6: adv.append(("🧴", f"அதிக UV ({d['uv']:.0f}). குடை பயன்படுத்தவும்"))
     if d["feels"] >= 35: adv.append(("☀️", "வெப்பமான நாள். போதுமான தண்ணீர் குடிக்கவும்"))
     
@@ -248,8 +301,6 @@ def template(title, d, content):
 
 def card_weather(d):
     icon = owm_emoji(d["main"], d["night"])
-    
-    # 4-Grid Stats
     wcol = "#D92D20" if d["wind"] >= 60 else "#B54708" if d["wind"] >= 40 else "#0F172A"
     wnote = "Dangerous" if d["wind"] >= 60 else "Strong" if d["wind"] >= 40 else "Calm to breezy"
     aqi_name = {1: "Good", 2: "Fair", 3: "Moderate", 4: "Poor", 5: "Very poor"}.get(d["aqi"], "Unknown")
@@ -271,7 +322,6 @@ def card_weather(d):
       <div class="st"><div class="k">{uv_k}</div><div class="v" style="color:{ucol}">{uv_v}</div><div class="d">{uv_d}</div></div>
       </div></div>"""
 
-    # Hourly Bars
     strip = ""
     hrs = [h for h in range(6, 22) if h in d["hourly"]]
     if hrs:
@@ -293,9 +343,19 @@ def card_weather(d):
     return template(f"{d['city']} Weather", d, head + stats + strip + f'<div class="sec"><div class="t">5-Day Outlook</div><div style="display:grid;grid-template-columns:repeat(5,1fr)">{out}</div></div>')
 
 def card_advice(d):
+    p = d.get("panchangam")
+    panch_html = ""
+    if p:
+        sp = "".join(f'<div class="row"><span class="i" style="font-size:32px">{i.split(" ")[0]}</span><span>{esc(" ".join(i.split(" ")[1:]))}</span></div>' for i in p["special"])
+        panch_html = f"""<div class="sec" style="background:#FFF6D6;border-bottom:1px solid #FDE68A">
+        <div class="t" style="color:#93370D;margin-bottom:10px">Hindu Calendar & Panchangam</div>
+        <div style="font-size:28px;color:#B45309;margin-bottom:15px;font-weight:500">📅 Tamil Date: {p['tamil_date']} &nbsp;|&nbsp; 🌙 {p['nakshatra']} Nakshatram</div>
+        {sp}
+        </div>"""
+    
     items = "".join(f'<div class="row"><span class="i">{i}</span><span>{esc(t)}</span></div>' for i, t in d["advice"])
-    sun = f'<div class="sec" style="display:flex;justify-content:space-around;font-size:26px;background:#FFFBEB"><span>🌅 {fmt(d["sunrise"])}</span><span>🌇 {fmt(d["sunset"])}</span></div>'
-    return template("Daily Guide & Advice", d, sun + f'<div class="sec">{items}</div>')
+    sun = f'<div class="sec" style="display:flex;justify-content:space-around;font-size:26px;background:#F8FAFC"><span>🌅 Sunrise {fmt(d["sunrise"])}</span><span>🌇 Sunset {fmt(d["sunset"])}</span></div>'
+    return template("Daily Guide & Advice", d, panch_html + sun + f'<div class="sec"><div class="t">Weather Advice</div>{items}</div>')
 
 def card_events(d):
     today = "".join(f'<div class="row"><span class="i">{i["icon"]}</span><span><b>{esc(i["text"])}</b></span></div>' for i in d["today"])
