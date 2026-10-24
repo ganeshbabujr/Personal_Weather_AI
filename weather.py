@@ -353,51 +353,50 @@ FONT = "https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600
 CSS = """
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Outfit','Noto Sans','DejaVu Sans',Arial,'Noto Color Emoji',sans-serif;background:#fff}
-#card{width:1080px;background:#fff;color:#0F172A;line-height:1.3}
-.hero{position:relative;overflow:hidden;color:#fff;padding:60px 68px 120px;background:linear-gradient(165deg,var(--a),var(--b))}
-.hero::before{content:"";position:absolute;right:-150px;top:-170px;width:580px;height:580px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.30),rgba(255,255,255,0) 68%)}
+#card{width:800px;background:#fff;color:#0F172A;line-height:1.3}
+.hero{position:relative;overflow:hidden;color:#fff;padding:50px 45px 100px;background:linear-gradient(165deg,var(--a),var(--b))}
+.hero::before{content:"";position:absolute;right:-100px;top:-120px;width:450px;height:450px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.30),rgba(255,255,255,0) 68%)}
 .top{position:relative;display:flex;justify-content:space-between;align-items:baseline}
-.city{font-size:42px;font-weight:600}
-.date{font-size:30px;font-weight:300}
-.main{position:relative;display:flex;justify-content:space-between;align-items:center;margin-top:26px}
-.temp{font-size:250px;font-weight:200;line-height:.95;letter-spacing:-10px}
-.ico{font-size:200px;line-height:1}
-.cond{font-size:58px;font-weight:500;margin-top:8px}
-.sub{font-size:32px;font-weight:300;margin-top:8px}
-.chips{position:relative;display:flex;gap:16px;margin-top:34px;flex-wrap:wrap}
-.chip{background:rgba(255,255,255,.2);border-radius:40px;padding:12px 26px;font-size:28px}
-.sheet{position:relative;margin-top:-60px;background:#fff;border-radius:60px 60px 0 0;padding-top:30px}
-.al{margin:0 68px 18px;padding:26px 32px;border-radius:26px;font-size:38px;font-weight:600}
+.city{font-size:36px;font-weight:600}
+.date{font-size:26px;font-weight:300}
+.main{position:relative;display:flex;justify-content:space-between;align-items:center;margin-top:20px}
+.temp{font-size:180px;font-weight:200;line-height:.95;letter-spacing:-6px}
+.ico{font-size:140px;line-height:1}
+.cond{font-size:42px;font-weight:500;margin-top:8px}
+.sub{font-size:26px;font-weight:300;margin-top:8px}
+.chips{position:relative;display:flex;gap:12px;margin-top:28px;flex-wrap:wrap}
+.chip{background:rgba(255,255,255,.2);border-radius:40px;padding:10px 20px;font-size:24px}
+.sheet{position:relative;margin-top:-50px;background:#fff;border-radius:50px 50px 0 0;padding-top:25px}
+.al{margin:0 45px 15px;padding:20px 25px;border-radius:20px;font-size:32px;font-weight:600}
 .red{background:#D92D20;color:#fff}
 .amber{background:#FEF0C7;color:#93370D}
-.today{margin:0 68px 10px;background:#FFF6D6;border-radius:30px;padding:28px 34px 20px}
-.sec{padding:34px 68px}
+.today{margin:0 45px 10px;background:#FFF6D6;border-radius:24px;padding:24px 28px 18px}
+.sec{padding:30px 45px}
 .today+.sec,.al+.sec,.sheet>.sec:first-child{border-top:0}
 .sec+.sec{border-top:1px solid #EAECF0}
-.t{font-size:30px;font-weight:500;color:#475467;margin-bottom:18px}
-.stats{display:grid;grid-template-columns:repeat(4,1fr)}
-.st{padding:0 22px;border-left:1px solid #EAECF0}
-.st:first-child{padding-left:0;border-left:0}
-.k{font-size:26px;color:#667085}
-.v{font-size:44px;font-weight:600;margin-top:6px}
-.d{font-size:23px;color:#475467;margin-top:4px}
-.bars{display:flex;align-items:flex-end;gap:7px;height:150px}
+.t{font-size:28px;font-weight:500;color:#475467;margin-bottom:16px}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:24px}
+.st{padding:18px;background:#F9FAFB;border-radius:16px}
+.k{font-size:24px;color:#667085}
+.v{font-size:38px;font-weight:600;margin-top:6px}
+.d{font-size:21px;color:#475467;margin-top:4px}
+.bars{display:flex;align-items:flex-end;gap:6px;height:120px}
 .col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%}
-.bar{width:100%;border-radius:8px 8px 3px 3px}
-.lab{font-size:21px;color:#667085;height:28px;margin-top:8px;white-space:nowrap}
-.call{font-size:34px;font-weight:500;margin-top:14px}
-.row{display:flex;align-items:center;gap:20px;font-size:32px;padding:9px 0}
-.row .i{width:52px;text-align:center;font-size:36px}
-.when{margin-left:auto;background:#F2F4F7;border-radius:22px;padding:6px 20px;font-size:25px;color:#475467;white-space:nowrap}
-.sun{display:flex;gap:44px;font-size:30px;flex-wrap:wrap}
+.bar{width:100%;border-radius:6px 6px 3px 3px}
+.lab{font-size:19px;color:#667085;height:24px;margin-top:6px;white-space:nowrap}
+.call{font-size:28px;font-weight:500;margin-top:12px}
+.row{display:flex;align-items:center;gap:18px;font-size:28px;padding:8px 0}
+.row .i{width:45px;text-align:center;font-size:32px}
+.when{margin-left:auto;background:#F2F4F7;border-radius:20px;padding:5px 16px;font-size:22px;color:#475467;white-space:nowrap}
+.sun{display:flex;gap:35px;font-size:26px;flex-wrap:wrap}
 .sun span b{font-weight:500}
 .out{display:grid;grid-template-columns:repeat(5,1fr);text-align:center}
-.out .dn{font-size:28px;color:#475467}
-.out .e{font-size:54px;margin:6px 0}
-.out .h{font-size:30px;font-weight:600}
-.out .l{font-size:25px;color:#667085}
-.out .p{font-size:22px;color:#175CD3;margin-top:2px;height:26px}
-.foot{padding:24px 68px 44px;font-size:24px;color:#98A2B3}
+.out .dn{font-size:25px;color:#475467}
+.out .e{font-size:46px;margin:5px 0}
+.out .h{font-size:26px;font-weight:600}
+.out .l{font-size:22px;color:#667085}
+.out .p{font-size:19px;color:#175CD3;margin-top:2px;height:22px}
+.foot{padding:20px 45px 35px;font-size:22px;color:#98A2B3}
 """
 
 THEMES = {"night": ("#101B3A", "#2D3F73"), "Clear": ("#1F6FEB", "#62B0FF"), "Clouds": ("#475A78", "#8296B4"),
@@ -491,7 +490,7 @@ def build_html(d):
     if d["upcoming"]:
         title = "Week ahead" if d["sunday"] else "Coming up"
         body = "".join(f'<div class="row"><span class="i">{i["icon"]}</span><span>{esc(i["text"])}'
-                       f'<br><span style="font-size:24px;color:#667085">{i["date"]}</span></span>'
+                       f'<br><span style="font-size:21px;color:#667085">{i["date"]}</span></span>'
                        f'<span class="when">{i["when"]}</span></div>' for i in d["upcoming"])
         up = f'<div class="sec"><div class="t">{title}</div>{body}</div>'
 
@@ -504,17 +503,17 @@ def build_birthday_html(name, age):
     return f"""<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="{FONT}"><style>
 *{{box-sizing:border-box;margin:0;padding:0}}
 body{{font-family:'Outfit','Noto Sans',Arial,'Noto Color Emoji',sans-serif}}
-#b{{position:relative;overflow:hidden;width:1080px;height:1080px;color:#fff;text-align:center;
+#b{{position:relative;overflow:hidden;width:800px;height:800px;color:#fff;text-align:center;
 background:linear-gradient(160deg,#7A1FA2,#E5484D 55%,#FFB020);display:flex;flex-direction:column;justify-content:center;align-items:center}}
-.e{{position:absolute;font-size:90px}}
-.c{{font-size:260px;line-height:1}}
-.h{{font-size:96px;font-weight:300;margin-top:20px}}
-.n{{font-size:150px;font-weight:600;line-height:1.05;padding:0 60px}}
-.a{{font-size:54px;font-weight:300;margin-top:18px}}
-.f{{position:absolute;bottom:56px;font-size:34px;font-weight:300}}
+.e{{position:absolute;font-size:70px}}
+.c{{font-size:180px;line-height:1}}
+.h{{font-size:70px;font-weight:300;margin-top:15px}}
+.n{{font-size:110px;font-weight:600;line-height:1.05;padding:0 40px}}
+.a{{font-size:40px;font-weight:300;margin-top:15px}}
+.f{{position:absolute;bottom:40px;font-size:26px;font-weight:300}}
 </style></head><body><div id="b">
-<span class="e" style="left:70px;top:70px">🎈</span><span class="e" style="right:80px;top:110px">🎉</span>
-<span class="e" style="left:100px;bottom:150px">✨</span><span class="e" style="right:90px;bottom:170px">🎈</span>
+<span class="e" style="left:50px;top:50px">🎈</span><span class="e" style="right:60px;top:80px">🎉</span>
+<span class="e" style="left:75px;bottom:110px">✨</span><span class="e" style="right:65px;bottom:125px">🎈</span>
 <div class="c">🎂</div><div class="h">Happy Birthday</div><div class="n">{esc(name)}</div>
 <div class="a">{esc(age_line)}</div><div class="f">With love from the family</div></div></body></html>"""
 
@@ -526,7 +525,7 @@ def render_png(page_html, path, selector="#card"):
     from playwright.sync_api import sync_playwright
     with sync_playwright() as p:
         browser = p.chromium.launch()
-        page = browser.new_page(viewport={"width": 1080, "height": 1200})
+        page = browser.new_page(viewport={"width": 800, "height": 1200})
         try:
             page.set_content(page_html, wait_until="networkidle")
             page.evaluate("document.fonts.ready")
