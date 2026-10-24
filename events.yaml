@@ -1,0 +1,39 @@
+# Family events. Keep dates in quotes. No phone numbers needed.
+#
+# One-time or yearly:
+#   date: "MM-DD"       repeats every year (birthdays, anniversaries)
+#   date: "YYYY-MM-DD"  happens once
+#   year: 1966          optional, shows the age or number of years
+# Repeating reminders (shown on the day, not in "Coming up"):
+#   repeat: daily
+#   repeat: weekly, days: [Mon, Thu]
+#   repeat: monthly, day: 5
+# type: birthday | anniversary | event | reminder | bill | medicine | pet | vehicle | exam
+
+- name: Amma
+  type: birthday
+  date: "03-15"
+  year: 1966
+
+- name: Wedding anniversary
+  type: anniversary
+  date: "11-02"
+  year: 2001
+
+- name: School exam begins
+  type: exam
+  date: "2026-12-01"
+
+- name: Car insurance renewal
+  type: vehicle
+  date: "2026-12-18"
+
+- name: Garbage pickup
+  type: reminder
+  repeat: weekly
+  days: [Mon, Thu]
+
+- name: Electricity bill due
+  type: bill
+  repeat: monthly
+  day: 5
