@@ -173,7 +173,7 @@ def items_for(day, events, hol, upcoming=False):
     if day in hol:
         name = hol[day]
         if not upcoming and any(k in name.lower() for k in FESTIVALS): out.append({"icon": "🎉", "text": f"Happy {name}!", "kind": "holiday", "special": True})
-        else: out.append({"icon": ICONS["holiday"], "text": f"Holiday: {name}", "kind": "holiday", "special": True})
+        else: out.append({"icon": ICONS.get("holiday", "🏖️"), "text": f"Holiday: {name}", "kind": "holiday", "special": True})
     return out
 
 # ----------------------------------------------------------------- data
@@ -243,15 +243,16 @@ def collect():
     events = load_events()
     hol = holiday_table(today.year, os.environ.get("HOLIDAY_STATE"))
     d["today"] = items_for(today, events, hol)
-    sunday = today.weekday() == 6
+    
+    # 30-Day Upcoming Event Scanner
     up = []
-    for i in range(1, 15):
+    for i in range(1, 31):
         day = today + timedelta(days=i)
         for it in items_for(day, events, hol, upcoming=True):
             it["when"] = "tomorrow" if i == 1 else f"in {i} days"
             it["date"] = day.strftime("%a %d %b")
             up.append(it)
-    d["upcoming"] = up[:8]
+    d["upcoming"] = up[:8] # Keep max 8 on the card so it fits nicely
 
     # Tamil Advice
     adv = []
@@ -377,7 +378,7 @@ def card_events(d):
     content = ""
     if today: content += f'<div class="sec" style="background:#F0FDF4"><div class="t" style="color:#166534">Happening Today</div>{today}</div>'
     if up: content += f'<div class="sec"><div class="t">Upcoming Events & Bills</div>{up}</div>'
-    if not content: content = '<div class="sec" style="font-size:26px;color:#667085">No upcoming events or bills in the next two weeks.</div>'
+    if not content: content = '<div class="sec" style="font-size:26px;color:#667085">No upcoming events or bills in the next month.</div>'
     return template("Family Calendar", d, content)
 
 def build_birthday_html(name, age):
