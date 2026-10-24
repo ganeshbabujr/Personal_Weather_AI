@@ -123,7 +123,8 @@ def card_rain_alert(d):
     .ta-msg {{ font-size: 28px; color: #cbd5e1; line-height: 1.5; }}
     .foot {{ text-align: center; color: #475569; font-size: 22px; margin-top: auto; padding-top: 40px; }}
     </style></head><body><div class="rain-bg">
-    <div style="text-align:center"><div class="badge">⛈️ Sudden Rain Alert</div></div>
+    <div style="text-align:center; font-size: 140px; margin-bottom: 25px; line-height: 1;">⛈️</div>
+    <div style="text-align:center"><div class="badge">Sudden Rain Alert</div></div>
     <div class="city">{esc(d['city'])}</div>
     <div class="ta-city">திடீர் மழை எச்சரிக்கை</div>
     
