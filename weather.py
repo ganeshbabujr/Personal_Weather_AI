@@ -1,4 +1,4 @@
-"""Daily family briefing: 3-card layout (Weather, Advice+Panchangam, Events) + Birthday Cards.
+"""Daily family briefing: 3-card layout + Rain Watch + 1-min intervals.
 
 Run daily:   python weather.py
 Run as watch: python weather.py --watch
@@ -7,6 +7,7 @@ import os
 import sys
 import html
 import json
+import time
 import requests
 import yaml
 from datetime import datetime, timezone, timedelta
@@ -35,12 +36,10 @@ def openmeteo(lat, lon):
         return None
 
 def get_panchangam(dt, sunrise, sunset):
-    """Calculates Tithi, Nakshatra, Tamil Date, and exact daily timings based on local sunrise."""
     try:
         import ephem
         import math
     except ImportError:
-        print("ephem library not installed. Skipping panchangam.")
         return None
 
     obs = ephem.Observer()
@@ -67,11 +66,11 @@ def get_panchangam(dt, sunrise, sunset):
         if tithi_name == "Ekadasi": special.add("🙏 Ekadasi (ஏகாதசி) - Fasting day")
         if tithi_name == "Trayodashi":
             if check_time.weekday() == 5:
-                special.add("🛕 Sani Pradosham (சனி பிரதோஷம்) - Go to Sivan temple")
+                special.add("🛕 Sani Pradosham (சனி பிரதோஷம்)")
             else:
-                special.add("🛕 Pradosham (பிரதோஷம்) - Go to Sivan temple")
-        if tithi_name == "Chaturthi": special.add("🐘 Chaturthi (சதுர்த்தி) - Vinayagar worship")
-        if tithi_name == "Shashti": special.add("🦚 Shashti (சஷ்டி) - Murugan worship")
+                special.add("🛕 Pradosham (பிரதோஷம்)")
+        if tithi_name == "Chaturthi": special.add("🐘 Chaturthi (சதுர்த்தி)")
+        if tithi_name == "Shashti": special.add("🦚 Shashti (சஷ்டி)")
         if tithi_name == "Ashtami": special.add("⚠️ Ashtami (அஷ்டமி)")
         if tithi_name == "Navami": special.add("⚠️ Navami (நவமி)")
 
@@ -97,19 +96,14 @@ def get_panchangam(dt, sunrise, sunset):
     rasi_deg = nirayana_sun % 30
     day_num = int(rasi_deg / 0.9856) + 1
 
-    # Exact Daily Timings (Dividing daytime into 8 parts)
-    day_idx = dt.weekday() # 0 = Mon, 6 = Sun
+    day_idx = dt.weekday()
     rahu_parts = [1, 6, 4, 5, 3, 2, 7]
     yama_parts = [3, 2, 1, 0, 6, 5, 4]
     kuli_parts = [5, 4, 3, 2, 1, 0, 6]
     nalla_neram_map = [
-        "6:30 AM - 7:30 AM, 4:30 PM - 5:30 PM", # Mon
-        "7:30 AM - 8:30 AM, 4:30 PM - 5:30 PM", # Tue
-        "9:00 AM - 10:00 AM, 4:30 PM - 5:30 PM", # Wed
-        "10:30 AM - 11:30 AM, 12:00 PM - 1:00 PM", # Thu
-        "9:30 AM - 10:30 AM, 4:30 PM - 5:30 PM", # Fri
-        "7:30 AM - 8:30 AM, 4:30 PM - 5:30 PM", # Sat
-        "7:30 AM - 8:30 AM, 3:30 PM - 4:30 PM", # Sun
+        "6:30 AM - 7:30 AM, 4:30 PM - 5:30 PM", "7:30 AM - 8:30 AM, 4:30 PM - 5:30 PM", "9:00 AM - 10:00 AM, 4:30 PM - 5:30 PM",
+        "10:30 AM - 11:30 AM, 12:00 PM - 1:00 PM", "9:30 AM - 10:30 AM, 4:30 PM - 5:30 PM", "7:30 AM - 8:30 AM, 4:30 PM - 5:30 PM",
+        "7:30 AM - 8:30 AM, 3:30 PM - 4:30 PM"
     ]
     
     part_dur = (sunset - sunrise) / 8
@@ -119,13 +113,8 @@ def get_panchangam(dt, sunrise, sunset):
         return f"{start.strftime('%I:%M %p').lstrip('0')} - {end.strftime('%I:%M %p').lstrip('0')}"
 
     return {
-        "special": sorted(list(special)),
-        "nakshatra": " / ".join(sorted(list(nak_names))),
-        "tamil_date": f"{months[month_num]} {day_num}",
-        "rahu": get_time(rahu_parts[day_idx]),
-        "yama": get_time(yama_parts[day_idx]),
-        "kuli": get_time(kuli_parts[day_idx]),
-        "nalla": nalla_neram_map[day_idx]
+        "special": sorted(list(special)), "nakshatra": " / ".join(sorted(list(nak_names))), "tamil_date": f"{months[month_num]} {day_num}",
+        "rahu": get_time(rahu_parts[day_idx]), "yama": get_time(yama_parts[day_idx]), "kuli": get_time(kuli_parts[day_idx]), "nalla": nalla_neram_map[day_idx]
     }
 
 def fmt(dt): return dt.strftime("%I:%M %p").lstrip("0")
@@ -244,7 +233,6 @@ def collect():
     hol = holiday_table(today.year, os.environ.get("HOLIDAY_STATE"))
     d["today"] = items_for(today, events, hol)
     
-    # 30-Day Upcoming Event Scanner
     up = []
     for i in range(1, 31):
         day = today + timedelta(days=i)
@@ -252,20 +240,17 @@ def collect():
             it["when"] = "tomorrow" if i == 1 else f"in {i} days"
             it["date"] = day.strftime("%a %d %b")
             up.append(it)
-    d["upcoming"] = up[:8] # Keep max 8 on the card so it fits nicely
+    d["upcoming"] = up[:8] 
 
-    # Tamil Advice
     adv = []
     if d["uv"] and d["uv"] >= 6: adv.append(("🧴", f"அதிக UV ({d['uv']:.0f}). குடை பயன்படுத்தவும்"))
     if d["feels"] >= 35: adv.append(("☀️", "வெப்பமான நாள். போதுமான தண்ணீர் குடிக்கவும்"))
-    
     if d["rain"]:
         r_time = "இப்போது" if d["rain"]["now"] else f"{fmt_h(d['rain']['start'])} அளவில்"
         adv.append(("☔", f"{r_time} மழை வரலாம்: குடை எடுத்துச் செல்லவும்"))
         adv.append(("🧺", "இன்று வெளியே துணி காயவைக்க வேண்டாம்"))
     else:
         adv.append(("🧺", "துணிகளை வெளியே காயவைக்க நல்ல நாள்"))
-        
     d["advice"] = adv
     return d
 
@@ -421,40 +406,47 @@ def send_photo(path, cap):
     with open(path, "rb") as f:
         requests.post(f"https://api.telegram.org/bot{token}/sendPhoto", data={"chat_id": chat, "caption": cap}, files={"photo": f}, timeout=60).raise_for_status()
 
-def send_album(paths, cap):
-    token = os.environ["TELEGRAM_BOT_TOKEN"]
-    chat = os.environ["TELEGRAM_CHAT_ID"]
-    files, media = {}, []
-    for i, path in enumerate(paths):
-        name = f"img{i}"
-        files[name] = open(path, "rb")
-        item = {"type": "photo", "media": f"attach://{name}"}
-        if i == 0: item["caption"] = cap
-        media.append(item)
-    requests.post(f"https://api.telegram.org/bot{token}/sendMediaGroup", data={"chat_id": chat, "media": json.dumps(media)}, files=files, timeout=60).raise_for_status()
-
 def main():
     d = collect()
+    
+    # ------------------ WATCH MODE (Sudden Rain & Severe Alerts) ------------------
     if "--watch" in sys.argv:
-        if any(lvl == "red" for lvl, t in d["alerts"]):
-            requests.post(f"https://api.telegram.org/bot{os.environ['TELEGRAM_BOT_TOKEN']}/sendMessage", json={"chat_id": os.environ["TELEGRAM_CHAT_ID"], "text": "ALERT!\n" + "\n".join(t for l, t in d["alerts"])})
+        alerts_text = [t for l, t in d["alerts"] if l == "red"]
+        rain_alert = False
+        
+        if d["rain"]:
+            hrs_until_rain = (d["rain"]["start"] - d["now"].hour) % 24
+            if hrs_until_rain <= 1:
+                rain_alert = True
+                
+        if alerts_text or rain_alert:
+            if alerts_text:
+                requests.post(f"https://api.telegram.org/bot{os.environ['TELEGRAM_BOT_TOKEN']}/sendMessage", json={"chat_id": os.environ["TELEGRAM_CHAT_ID"], "text": "⚠️ ALERT!\n" + "\n".join(alerts_text)})
+            if rain_alert:
+                render_png(card_weather(d), "weather.png")
+                send_photo("weather.png", f"🌧️ Sudden Rain Watch for {d['city']}: High chance of rain expected shortly!")
         return
 
-    render_png(card_weather(d), "weather.png")
-    render_png(card_advice(d), "advice.png")
-    render_png(card_events(d), "events.png")
+    # ------------------ DAILY BRIEFING MODE ------------------
+    greeting = f"☀️ Good Morning Family! Here is your daily briefing for {d['now'].strftime('%A, %B %d')}."
+    requests.post(f"https://api.telegram.org/bot{os.environ['TELEGRAM_BOT_TOKEN']}/sendMessage", json={"chat_id": os.environ["TELEGRAM_CHAT_ID"], "text": greeting})
     
-    cap = f"{d['city']}: {d['temp']:.0f}°C, {d['cond']}. " + ("Rain expected." if d["rain"] else "")
-    try:
-        send_album(["weather.png", "advice.png", "events.png"], cap)
-    except Exception as exc:
-        print("Failed to send album:", exc)
+    render_png(card_weather(d), "weather.png")
+    send_photo("weather.png", "1/3: Today's Weather & Outlook 🌦️")
+    time.sleep(60)
+
+    render_png(card_advice(d), "advice.png")
+    send_photo("advice.png", "2/3: Panchangam & Daily Advice 🪷")
+    time.sleep(60)
+
+    render_png(card_events(d), "events.png")
+    send_photo("events.png", "3/3: Upcoming Events & Bills 📅")
 
     for i in d["today"]:
         if i["kind"] == "birthday":
             try:
                 path = render_png(build_birthday_html(i["name"], i["age"]), "birthday_card.png", ".b")
-                send_photo(path, f"Happy Birthday {i['name']}!")
+                send_photo(path, f"Happy Birthday {i['name']}! 🎉")
             except Exception as exc:
                 print("Birthday card failed:", exc)
 
