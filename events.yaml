@@ -37,3 +37,17 @@
   type: bill
   repeat: monthly
   day: 5
+
+  - name: Sani Pradosham
+  type: temple
+  date: "2026-10-25"
+
+- name: EB Bill Due
+  type: bill
+  repeat: monthly
+  day: 25
+
+- name: Internet Bill
+  type: bill
+  repeat: monthly
+  day: 25
