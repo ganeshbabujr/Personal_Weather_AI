@@ -37,6 +37,18 @@ def openmeteo(lat, lon):
         return None
 
 
+def get_moon_phase(dt):
+    # Calculates phase based on a known new moon (Jan 11, 2024, 11:57 UTC)
+    ref = datetime(2024, 1, 11, 11, 57, tzinfo=timezone.utc)
+    days = (dt - ref).total_seconds() / 86400
+    phase = (days % 29.53058867) / 29.53058867
+    if phase < 0.04 or phase > 0.96:
+        return "Amavasya"
+    if 0.46 < phase < 0.54:
+        return "Purnima"
+    return None
+
+
 def fmt(dt):
     return dt.strftime("%I:%M %p").lstrip("0")
 
@@ -170,7 +182,7 @@ def collect():
     d = {"city": cur["name"], "now": now, "temp": cur["main"]["temp"], "feels": cur["main"]["feels_like"],
          "humidity": cur["main"]["humidity"], "cond": cur["weather"][0]["description"].title(),
          "main": cur["weather"][0]["main"], "night": night, "sunrise": sunrise, "sunset": sunset,
-         "aqi": aq["main"]["aqi"], "pm25": aq["components"]["pm2_5"]}
+         "aqi": aq["main"]["aqi"], "pm25": aq["components"]["pm2_5"], "moon": get_moon_phase(now)}
     d["t_min"] = min([s["main"]["temp_min"] for s in slots] + [d["temp"]])
     d["t_max"] = max([s["main"]["temp_max"] for s in slots] + [d["temp"]])
 
@@ -271,49 +283,56 @@ def collect():
     d["sunday"] = sunday
     d["upcoming"] = up[:8 if sunday else 5]
 
-    # Advice
+    # Advice (Translated to Tamil)
     adv = []
     uv = d["uv"]
     if uv is not None and uv >= 8:
-        adv.append(("🧴", f"Very high UV ({uv:.0f}) around {fmt_h(d['uv_hour'])}. Sunscreen, hat, avoid 11 AM to 3 PM"))
+        adv.append(("🧴", f"மிக அதிக UV ({uv:.0f}). காலை 11 முதல் மதியம் 3 வரை வெயிலை தவிர்க்கவும்"))
     elif uv is not None and uv >= 6:
-        adv.append(("🧴", f"High UV ({uv:.0f}). Wear sunscreen and sunglasses"))
+        adv.append(("🧴", f"அதிக UV ({uv:.0f}). தொப்பி அல்லது குடை பயன்படுத்தவும்"))
     elif uv is not None and uv >= 3:
-        adv.append(("🕶️", "Moderate UV. Sunscreen if you are out for long"))
+        adv.append(("🕶️", "மிதமான UV. வெளியே சென்றால் கவனம் தேவை"))
+        
     if d["feels"] >= 40:
-        adv.append(("🥵", "Extreme heat. Drink water often and rest in the shade"))
+        adv.append(("🥵", "கடுமையான வெப்பம். அடிக்கடி தண்ணீர் குடிக்கவும், நிழலில் ஓய்வெடுக்கவும்"))
     elif d["feels"] >= 35:
-        adv.append(("☀️", "Hot day. Stay hydrated"))
+        adv.append(("☀️", "வெப்பமான நாள். போதுமான தண்ணீர் குடிக்கவும்"))
+        
     if d["feels"] >= 32:
-        adv.append(("👕", "Wear light cotton clothes"))
+        adv.append(("👕", "மெல்லிய பருத்தி ஆடைகளை அணியவும்"))
     elif d["feels"] <= 18:
-        adv.append(("🧥", "Carry a jacket"))
+        adv.append(("🧥", "குளிர்ச்சி: ஸ்வெட்டர்/ஜாக்கெட் எடுத்துச் செல்லவும்"))
     else:
-        adv.append(("👚", "Normal clothes are fine"))
+        adv.append(("👚", "சாதாரண ஆடைகளே போதுமானது"))
+        
     if d["rain"]:
-        adv.append(("☔", "Carry an umbrella"))
-        adv.append(("🧺", "Do not dry laundry outside today"))
+        adv.append(("☔", "மழை வர வாய்ப்புள்ளது: குடை எடுத்துச் செல்லவும்"))
+        adv.append(("🧺", "இன்று வெளியே துணி காயவைக்க வேண்டாம்"))
         if d["humidity"] >= 75:
-            adv.append(("🦟", "After the rain, empty buckets and pots. Standing water breeds mosquitoes"))
+            adv.append(("🦟", "கொசுக்கள்: வீட்டைச் சுற்றி தண்ணீர் தேங்காமல் பார்க்கவும்"))
     else:
-        adv.append(("🧺", "Good day to dry laundry outside"))
+        adv.append(("🧺", "துணிகளை வெளியே காயவைக்க நல்ல நாள்"))
+        
     if d["aqi"] >= 4:
-        adv.append(("😷", "Poor air. Wear a mask and limit time outdoors"))
-    for var, label in (("SCHOOL_DROP", "drop-off"), ("SCHOOL_PICKUP", "pickup")):
+        adv.append(("😷", "காற்று மாசடைந்துள்ளது. வெளியே செல்லும் போது மாஸ்க் அணியவும்"))
+        
+    for var, label in (("SCHOOL_DROP", "பள்ளி செல்லும்"), ("SCHOOL_PICKUP", "பள்ளி முடியும்")):
         t = os.environ.get(var)
         if t and d["rain"]:
             hr, mn = (int(x) for x in (t.split(":") + ["0"])[:2])
             if d["rain"]["start"] <= hr < d["rain"]["end"]:
-                adv.append(("🎒", f"Rain at school {label} ({hr % 12 or 12}:{mn:02d} {'AM' if hr < 12 else 'PM'}). Send an umbrella"))
+                adv.append(("🎒", f"{label} நேரத்தில் மழை வரலாம் ({hr % 12 or 12}:{mn:02d} {'AM' if hr < 12 else 'PM'}). குடை கொடுத்தனுப்பவும்"))
+                
     watch = [w.strip().lower() for w in (os.environ.get("WATCH") or "").split(",") if w.strip()]
     if "elders" in watch and d["feels"] >= 35:
-        adv.append(("👵", "Elders: keep cool indoors and sip water every hour"))
+        adv.append(("👵", "பெரியவர்கள்: வெயிலில் செல்ல வேண்டாம், அடிக்கடி நீர் அருந்தவும்"))
     if "asthma" in watch and d["aqi"] >= 3:
-        adv.append(("🫁", "Asthma: keep the inhaler handy and avoid outdoor exercise"))
+        adv.append(("🫁", "ஆஸ்துமா: இன்ஹேலரை அருகில் வைத்திருக்கவும், தூசியை தவிர்க்கவும்"))
     if "kids" in watch and (d["rain"] or d["feels"] >= 38):
-        adv.append(("🧒", "Kids: indoor play today"))
+        adv.append(("🧒", "குழந்தைகள்: இன்று வீட்டிற்குள்ளேயே விளையாடவும்"))
+        
     if d["walk"] is not None:
-        adv.append(("🚶", f"Best time for a walk: {fmt_h(d['walk'])}"))
+        adv.append(("🚶", f"நடைபயிற்சிக்கு சிறந்த நேரம்: {fmt_h(d['walk'])}"))
     d["advice"] = adv
 
     # Other places family lives
@@ -454,7 +473,8 @@ def build_html(d):
             call = "Dry through the day"
         strip = f'<div class="sec"><div class="t">Rain chance by hour</div><div class="bars">{cols}</div><div class="call">{call}</div></div>'
 
-    sun = f'<span>🌅 Sunrise <b>{fmt(d["sunrise"])}</b></span><span>🌇 Sunset <b>{fmt(d["sunset"])}</b></span>'
+    moon_str = f'<span>🌙 Phase <b>{d["moon"]}</b></span>' if d.get("moon") else ""
+    sun = f'<span>🌅 Sunrise <b>{fmt(d["sunrise"])}</b></span><span>🌇 Sunset <b>{fmt(d["sunset"])}</b></span>{moon_str}'
     sunsec = f'<div class="sec"><div class="sun">{sun}</div></div>'
 
     advice = f'<div class="sec"><div class="t">Today\'s advice</div>{rows([{"icon": i, "text": t} for i, t in d["advice"][:4 if d["quiet"] else 9]])}</div>'
