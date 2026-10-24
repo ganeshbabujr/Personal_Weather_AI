@@ -1,0 +1,23 @@
+name: Storm Watch
+
+on:
+  schedule:
+    - cron: "0 1-16 * * *"   # hourly, about 6:30 AM to 9:30 PM IST
+  workflow_dispatch:
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    env:
+      OWM_API_KEY: ${{ secrets.OWM_API_KEY }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      ZIP_CODE: ${{ vars.ZIP_CODE }}
+      WIND_LIMIT: ${{ vars.WIND_LIMIT }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests pyyaml holidays
+      - run: python weather.py --watch
