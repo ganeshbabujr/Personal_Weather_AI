@@ -1,44 +1,25 @@
-name: Daily Family Briefing
+name: Storm Watch
 
 on:
   schedule:
-    - cron: "30 0 * * *"
+    - cron: "*/30 1-16 * * *"
   workflow_dispatch:
 
 jobs:
-  send:
+  watch:
     runs-on: ubuntu-latest
     env:
       OWM_API_KEY: ${{ secrets.OWM_API_KEY }}
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       ZIP_CODE: ${{ vars.ZIP_CODE }}
-      HOLIDAY_STATE: ${{ vars.HOLIDAY_STATE }}
-      EXTRA_ZIPS: ${{ vars.EXTRA_ZIPS }}
-      SCHOOL_DROP: ${{ vars.SCHOOL_DROP }}
-      SCHOOL_PICKUP: ${{ vars.SCHOOL_PICKUP }}
-      WATCH: ${{ vars.WATCH }}
+      WIND_LIMIT: ${{ vars.WIND_LIMIT }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - run: sudo apt-get update && sudo apt-get install -y fonts-noto-color-emoji fonts-noto-core
-      - run: pip install requests pyyaml holidays playwright
+      - run: pip install requests pyyaml holidays ephem playwright
       - run: playwright install --with-deps chromium
-      - run: python weather.py
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: card
-          path: |
-            card.png
-            card.html
-          retention-days: 3
-          if-no-files-found: ignore
-      - name: Tell me if it failed
-        if: failure()
-        run: >
-          curl -s "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"
-          -d chat_id="${TELEGRAM_CHAT_ID}"
-          -d text="Daily weather briefing failed. Open GitHub Actions to see why."
+      - run: python weather.py --watch
