@@ -35,7 +35,7 @@ def openmeteo(lat, lon):
         return None
 
 def get_panchangam(dt):
-    """Calculates exact Hindu Tithi, Nakshatra, and Tamil Solar Month using planetary math."""
+    """Calculates exact Hindu Tithi, Nakshatra, and Tamil Solar Month for morning, noon, and evening."""
     try:
         import ephem
         import math
@@ -44,60 +44,67 @@ def get_panchangam(dt):
         return None
 
     obs = ephem.Observer()
-    obs.date = dt.astimezone(timezone.utc)
-    sun = ephem.Sun(obs)
-    moon = ephem.Moon(obs)
+    special = set()
+    nak_names = set()
 
-    # Convert to ecliptic degrees
+    # Check 3 times a day to catch Tithis that start or end mid-day
+    for hr in [6, 12, 18]:
+        check_time = dt.replace(hour=hr, minute=0, second=0)
+        obs.date = check_time.astimezone(timezone.utc)
+        sun = ephem.Sun(obs)
+        moon = ephem.Moon(obs)
+
+        sun_deg = math.degrees(ephem.Ecliptic(sun).lon)
+        moon_deg = math.degrees(ephem.Ecliptic(moon).lon)
+
+        # 1. Calculate Tithi
+        diff = (moon_deg - sun_deg) % 360
+        tithi_num = int(diff / 12.0) + 1
+        tithis = ["Prathama", "Dwitiya", "Tritiya", "Chaturthi", "Panchami", "Shashti", "Saptami", "Ashtami", "Navami", "Dashami", "Ekadasi", "Dwadashi", "Trayodashi", "Chaturdashi", "Purnima",
+                  "Prathama", "Dwitiya", "Tritiya", "Chaturthi", "Panchami", "Shashti", "Saptami", "Ashtami", "Navami", "Dashami", "Ekadasi", "Dwadashi", "Trayodashi", "Chaturdashi", "Amavasya"]
+        tithi_name = tithis[tithi_num - 1]
+
+        if tithi_name == "Amavasya": special.add("🌑 Amavasya (அமாவாசை)")
+        if tithi_name == "Purnima": special.add("🌕 Pournami (பௌர்ணமி)")
+        if tithi_name == "Ekadasi": special.add("🙏 Ekadasi (ஏகாதசி) - Fasting day")
+        if tithi_name == "Trayodashi":
+            if check_time.weekday() == 5: # Saturday
+                special.add("🛕 Sani Pradosham (சனி பிரதோஷம்) - Go to Sivan temple")
+            else:
+                special.add("🛕 Pradosham (பிரதோஷம்) - Go to Sivan temple")
+        if tithi_name == "Chaturthi": special.add("🐘 Chaturthi (சதுர்த்தி) - Vinayagar worship")
+        if tithi_name == "Shashti": special.add("🦚 Shashti (சஷ்டி) - Murugan worship")
+        if tithi_name == "Ashtami": special.add("⚠️ Ashtami (அஷ்டமி)")
+        if tithi_name == "Navami": special.add("⚠️ Navami (நவமி)")
+
+        # 2. Calculate Nakshatram
+        ayanamsa = 24.15 # Approx Lahiri Ayanamsa
+        nirayana_moon = (moon_deg - ayanamsa) % 360
+        nak_num = int(nirayana_moon / (360/27.0))
+        nakshatras = ["Aswini", "Bharani", "Karthigai", "Rohini", "Mrigasira", "Arudra", "Punarvasu", "Pushya", "Ashlesha",
+                      "Magam", "Pooram", "Uthiram", "Hastham", "Chithirai", "Swathi", "Visakam", "Anusham", "Kettai",
+                      "Moolam", "Pooradam", "Uthiradam", "Thiruvonam", "Avittam", "Sadayam", "Poorattadhi", "Uthirattadhi", "Revathi"]
+        nak_name = nakshatras[nak_num]
+        nak_names.add(nak_name)
+        
+        if nak_name == "Karthigai": special.add("🪔 Kiruthigai (கிருத்திகை)")
+        if nak_name == "Thiruvonam": special.add("🌸 Thiruvonam (திருவோணம்)")
+
+    # 3. Calculate Tamil Solar Month & Date (using noon position)
+    obs.date = dt.replace(hour=12).astimezone(timezone.utc)
+    sun.compute(obs)
     sun_deg = math.degrees(ephem.Ecliptic(sun).lon)
-    moon_deg = math.degrees(ephem.Ecliptic(moon).lon)
-
-    # 1. Calculate Tithi (12 degrees separation = 1 Tithi)
-    diff = (moon_deg - sun_deg) % 360
-    tithi_num = int(diff / 12.0) + 1
-    tithis = ["Prathama", "Dwitiya", "Tritiya", "Chaturthi", "Panchami", "Shashti", "Saptami", "Ashtami", "Navami", "Dashami", "Ekadasi", "Dwadashi", "Trayodashi", "Chaturdashi", "Purnima",
-              "Prathama", "Dwitiya", "Tritiya", "Chaturthi", "Panchami", "Shashti", "Saptami", "Ashtami", "Navami", "Dashami", "Ekadasi", "Dwadashi", "Trayodashi", "Chaturdashi", "Amavasya"]
-    tithi_name = tithis[tithi_num - 1]
-
-    special = []
-    if tithi_name == "Amavasya": special.append("🌑 Amavasya (அமாவாசை)")
-    if tithi_name == "Purnima": special.append("🌕 Purnima (பௌர்ணமி)")
-    if tithi_name == "Ekadasi": special.append("🙏 Ekadasi (ஏகாதசி) - Fasting day")
-    if tithi_name == "Trayodashi":
-        if dt.weekday() == 5: # Saturday
-            special.append("🛕 Sani Pradosham (சனி பிரதோஷம்) - Go to Sivan temple")
-        else:
-            special.append("🛕 Pradosham (பிரதோஷம்) - Go to Sivan temple")
-    if tithi_name == "Chaturthi": special.append("🐘 Chaturthi (சதுர்த்தி) - Vinayagar worship")
-    if tithi_name == "Shashti": special.append("🦚 Shashti (சஷ்டி) - Murugan worship")
-    if tithi_name == "Ashtami": special.append("⚠️ Ashtami (அஷ்டமி)")
-    if tithi_name == "Navami": special.append("⚠️ Navami (நவமி)")
-
-    # 2. Calculate Nakshatram (13.33 degrees per Nakshatra)
-    ayanamsa = 24.15 # Approx Lahiri Ayanamsa for current years
-    nirayana_moon = (moon_deg - ayanamsa) % 360
-    nak_num = int(nirayana_moon / (360/27.0))
-    nakshatras = ["Aswini", "Bharani", "Karthigai", "Rohini", "Mrigasira", "Arudra", "Punarvasu", "Pushya", "Ashlesha",
-                  "Magam", "Pooram", "Uthiram", "Hastham", "Chithirai", "Swathi", "Visakam", "Anusham", "Kettai",
-                  "Moolam", "Pooradam", "Uthiradam", "Thiruvonam", "Avittam", "Sadayam", "Poorattadhi", "Uthirattadhi", "Revathi"]
-    nak_name = nakshatras[nak_num]
-
-    if nak_name == "Karthigai": special.append("🪔 Kiruthigai (கிருத்திகை)")
-    if nak_name == "Thiruvonam": special.append("🌸 Thiruvonam (திருவோணம்)")
-
-    # 3. Calculate Tamil Solar Month & Date
     nirayana_sun = (sun_deg - ayanamsa) % 360
     month_num = int(nirayana_sun / 30)
     months = ["Chithirai", "Vaikasi", "Aani", "Aadi", "Avani", "Purattasi", "Aippasi", "Karthigai", "Margazhi", "Thai", "Masi", "Panguni"]
     tamil_month = months[month_num]
     
-    # Sun moves ~0.9856 degrees per day
     rasi_deg = nirayana_sun % 30
     day_num = int(rasi_deg / 0.9856) + 1
 
     return {
-        "special": special,
-        "nakshatra": nak_name,
+        "special": sorted(list(special)),
+        "nakshatra": " / ".join(sorted(list(nak_names))),
         "tamil_date": f"{tamil_month} {day_num}"
     }
 
