@@ -10,10 +10,10 @@
 #   repeat: monthly, day: 5
 # type: birthday | anniversary | event | reminder | bill | medicine | pet | vehicle | exam
 
-- name: Amma
+- name: Ganesh
   type: birthday
-  date: "03-15"
-  year: 1966
+  date: "10-25"
+  year: 1994
 
 - name: Wedding anniversary
   type: anniversary
