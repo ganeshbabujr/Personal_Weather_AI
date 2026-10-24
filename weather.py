@@ -294,6 +294,15 @@ def template(title, d, content):
 def card_rain_alert(d):
     start = "Now" if d['rain']['now'] else fmt_h(d['rain']['start'])
     chance = d['rain']['chance']
+    end_time = fmt_h(d['rain']['end'])
+    
+    if d['rain']['now']:
+        en_msg = f"Rain is expected to continue until {end_time}. Please secure your belongings and stay safe."
+        ta_msg = f"{end_time} வரை மழை தொடர வாய்ப்புள்ளது. தயவுசெய்து பாதுகாப்பாக இருக்கவும்."
+    else:
+        en_msg = f"Rain expected to start around {start} and last until {end_time}. Please stay safe."
+        ta_msg = f"{start} அளவில் மழை தொடங்கி {end_time} வரை தொடரலாம். பாதுகாப்பாக இருக்கவும்."
+        
     return f"""<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="{FONT}">
     <style>{BASE_CSS}
     .alert-card {{ background: linear-gradient(145deg, #0f172a, #1e293b); color: #fff; padding: 60px; border-radius: 40px; margin: 20px; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.3); border: 2px solid #334155; }}
@@ -318,8 +327,8 @@ def card_rain_alert(d):
         </div>
         
         <div style="margin-top: 45px; padding-top: 40px; border-top: 1px solid rgba(255,255,255,0.1);">
-            <div style="font-size: 30px; color: #cbd5e1;">Rain expected shortly. Please secure your belongings and stay safe.</div>
-            <div style="font-size: 28px; color: #94a3b8; margin-top: 18px; line-height: 1.4;">சற்று நேரத்தில் மழை தொடங்க வாய்ப்புள்ளது. தயவுசெய்து பாதுகாப்பாக இருக்கவும்.</div>
+            <div style="font-size: 30px; color: #cbd5e1; line-height: 1.3">{en_msg}</div>
+            <div style="font-size: 28px; color: #94a3b8; margin-top: 18px; line-height: 1.4;">{ta_msg}</div>
         </div>
     </div>
     
