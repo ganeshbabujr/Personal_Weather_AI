@@ -1,7 +1,7 @@
-"""Daily family briefing: 3-card layout (Weather, Advice, Events).
+"""Daily family briefing: 3-card layout (Weather, Advice, Events) + Birthday Cards.
 
 Run daily:   python weather.py
-Run as watch: python weather.py --watch      (only messages on severe alerts)
+Run as watch: python weather.py --watch
 """
 import os
 import sys
@@ -175,7 +175,7 @@ def collect():
     d["today"] = items_for(today, events, hol)
     sunday = today.weekday() == 6
     up = []
-    for i in range(1, 15): # Look ahead 2 weeks for bills/events
+    for i in range(1, 15):
         day = today + timedelta(days=i)
         for it in items_for(day, events, hol, upcoming=True):
             it["when"] = "tomorrow" if i == 1 else f"in {i} days"
@@ -226,6 +226,17 @@ body{font-family:'Outfit',sans-serif;background:#F9FAFB;color:#0F172A;line-heigh
 .row:last-child{border-bottom:0}
 .row .i{font-size:36px;width:45px;text-align:center}
 .when{margin-left:auto;background:#F1F5F9;border-radius:20px;padding:6px 16px;font-size:22px;color:#475467}
+.sub{font-size:26px;font-weight:300;margin-top:8px;color:rgba(255,255,255,0.9)}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:24px}
+.st{padding:18px;background:#F9FAFB;border-radius:16px}
+.k{font-size:24px;color:#667085}
+.v{font-size:38px;font-weight:600;margin-top:6px}
+.d{font-size:21px;color:#475467;margin-top:4px}
+.bars{display:flex;align-items:flex-end;gap:6px;height:120px}
+.col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%}
+.bar{width:100%;border-radius:6px 6px 3px 3px}
+.lab{font-size:19px;color:#667085;height:24px;margin-top:6px;white-space:nowrap}
+.call{font-size:28px;font-weight:500;margin-top:12px}
 """
 
 def template(title, d, content):
@@ -237,18 +248,49 @@ def template(title, d, content):
 
 def card_weather(d):
     icon = owm_emoji(d["main"], d["night"])
-    stats = f"""
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:45px;background:linear-gradient(135deg,var(--a),var(--b));color:#fff;margin-top:-45px">
-        <div><div style="font-size:160px;font-weight:300;line-height:1">{d['temp']:.0f}°</div><div style="font-size:36px;font-weight:500">{d['cond']}</div></div>
+    
+    # 4-Grid Stats
+    wcol = "#D92D20" if d["wind"] >= 60 else "#B54708" if d["wind"] >= 40 else "#0F172A"
+    wnote = "Dangerous" if d["wind"] >= 60 else "Strong" if d["wind"] >= 40 else "Calm to breezy"
+    aqi_name = {1: "Good", 2: "Fair", 3: "Moderate", 4: "Poor", 5: "Very poor"}.get(d["aqi"], "Unknown")
+    acol = {1: "#067647", 2: "#4D7C0F", 3: "#B54708", 4: "#D92D20", 5: "#7A1FA2"}.get(d["aqi"], "#0F172A")
+    if d["uv"] is None:
+        uv_v, uv_d, ucol, uv_k = f"{d['humidity']}%", "Humidity", "#0F172A", "💧 Humid"
+    else:
+        uv_v, uv_k = f"{d['uv']:.0f}", "🧴 UV peak"
+        uv_d = "Very high" if d["uv"] >= 8 else "High" if d["uv"] >= 6 else "Moderate" if d["uv"] >= 3 else "Low"
+        ucol = "#D92D20" if d["uv"] >= 8 else "#B54708" if d["uv"] >= 6 else "#0F172A"
+    
+    rain_v = "Now" if d["rain"] and d["rain"]["now"] else (fmt_h(d["rain"]["start"]) if d["rain"] else "Dry")
+    rain_d = f"{d['rain']['chance']}% chance" if d["rain"] else "No rain today"
+    
+    stats = f"""<div class="sec"><div class="stats">
+      <div class="st"><div class="k">🌧️ Rain</div><div class="v">{rain_v}</div><div class="d">{rain_d}</div></div>
+      <div class="st"><div class="k">💨 Wind</div><div class="v" style="color:{wcol}">{d['wind']:.0f}</div><div class="d">km/h, {wnote}</div></div>
+      <div class="st"><div class="k">🫁 Air</div><div class="v" style="color:{acol}">{aqi_name}</div><div class="d">AQI {d['aqi']}, PM2.5 {d['pm25']:.0f}</div></div>
+      <div class="st"><div class="k">{uv_k}</div><div class="v" style="color:{ucol}">{uv_v}</div><div class="d">{uv_d}</div></div>
+      </div></div>"""
+
+    # Hourly Bars
+    strip = ""
+    hrs = [h for h in range(6, 22) if h in d["hourly"]]
+    if hrs:
+        cols = ""
+        for h in hrs:
+            p = d["hourly"][h]["pop"]
+            color = "#2E90FA" if p >= 50 else "#B2DDFF" if p >= 20 else "#E4E7EC"
+            lab = short_h(h) if h % 3 == 0 else ""
+            cols += f'<div class="col"><div class="bar" style="height:{max(8, p * 1.2):.0f}px;background:{color}"></div><div class="lab">{lab}</div></div>'
+        call = f"High chance of rain now, {d['rain']['chance']}% chance" if d["rain"] and d["rain"]["now"] else ("Expected around " + fmt_h(d["rain"]["start"]) if d["rain"] else "Dry through the day")
+        strip = f'<div class="sec"><div class="t">Rain chance by hour</div><div class="bars">{cols}</div><div class="call">{call}</div></div>'
+
+    head = f"""<div style="display:flex;justify-content:space-between;align-items:center;padding:20px 45px 45px;background:linear-gradient(135deg,var(--a),var(--b));color:#fff;margin-top:-45px">
+        <div><div style="font-size:160px;font-weight:300;line-height:1;letter-spacing:-6px">{d['temp']:.0f}°</div><div style="font-size:36px;font-weight:500;margin-top:10px">{d['cond']}</div><div class="sub">Feels {d['feels']:.0f}°, high {d['t_max']:.0f}°, low {d['t_min']:.0f}°</div></div>
         <div style="font-size:140px">{icon}</div>
-    </div>
-    <div class="sec" style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
-        <div style="background:#F1F5F9;padding:20px;border-radius:20px"><div style="font-size:22px;color:#475467">🌧️ Rain</div><div style="font-size:32px;font-weight:600">{f"{d['rain']['chance']}% chance" if d['rain'] else "No rain"}</div></div>
-        <div style="background:#F1F5F9;padding:20px;border-radius:20px"><div style="font-size:22px;color:#475467">🫁 AQI</div><div style="font-size:32px;font-weight:600">Level {d['aqi']}</div></div>
     </div>"""
     
-    out = "".join(f'<div style="text-align:center"><div style="font-size:24px;color:#475467">{o["label"]}</div><div style="font-size:46px;margin:10px 0">{o["emoji"]}</div><div style="font-size:26px;font-weight:600">{o["hi"]:.0f}°</div></div>' for o in d["outlook"])
-    return template(f"{d['city']} Weather", d, stats + f'<div class="sec"><div class="t">5-Day Outlook</div><div style="display:grid;grid-template-columns:repeat(5,1fr)">{out}</div></div>')
+    out = "".join(f'<div style="text-align:center"><div style="font-size:24px;color:#475467">{o["label"]}</div><div style="font-size:46px;margin:10px 0">{o["emoji"]}</div><div style="font-size:26px;font-weight:600">{o["hi"]:.0f}°</div><div style="font-size:22px;color:#667085">{o["lo"]:.0f}°</div><div style="font-size:19px;color:#175CD3;margin-top:5px;height:22px">{"💧"+str(o["pop"])+"%" if o["pop"]>=40 else ""}</div></div>' for o in d["outlook"])
+    return template(f"{d['city']} Weather", d, head + stats + strip + f'<div class="sec"><div class="t">5-Day Outlook</div><div style="display:grid;grid-template-columns:repeat(5,1fr)">{out}</div></div>')
 
 def card_advice(d):
     items = "".join(f'<div class="row"><span class="i">{i}</span><span>{esc(t)}</span></div>' for i, t in d["advice"])
@@ -264,32 +306,57 @@ def card_events(d):
     if not content: content = '<div class="sec" style="font-size:26px;color:#667085">No upcoming events or bills in the next two weeks.</div>'
     return template("Family Calendar", d, content)
 
+def build_birthday_html(name, age):
+    age_line = f"Turns {age} today" if age else "Many happy returns"
+    return f"""<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="{FONT}"><style>
+*{{box-sizing:border-box;margin:0;padding:0}}
+body{{font-family:'Outfit',sans-serif;width:800px}}
+.b{{position:relative;overflow:hidden;width:800px;height:800px;color:#fff;text-align:center;
+background:linear-gradient(160deg,#7A1FA2,#E5484D 55%,#FFB020);display:flex;flex-direction:column;justify-content:center;align-items:center;border-radius:40px;margin:20px}}
+.e{{position:absolute;font-size:70px}}
+.c{{font-size:180px;line-height:1}}
+.h{{font-size:70px;font-weight:300;margin-top:15px}}
+.n{{font-size:110px;font-weight:600;line-height:1.05;padding:0 40px}}
+.a{{font-size:40px;font-weight:300;margin-top:15px}}
+.f{{position:absolute;bottom:40px;font-size:26px;font-weight:300}}
+</style></head><body><div class="b">
+<span class="e" style="left:50px;top:50px">🎈</span><span class="e" style="right:60px;top:80px">🎉</span>
+<span class="e" style="left:75px;bottom:110px">✨</span><span class="e" style="right:65px;bottom:125px">🎈</span>
+<div class="c">🎂</div><div class="h">Happy Birthday</div><div class="n">{esc(name)}</div>
+<div class="a">{esc(age_line)}</div><div class="f">With love from the family</div></div></body></html>"""
+
 # ----------------------------------------------------------------- output
 
-def render_png(html_str, path):
+def render_png(html_str, path, selector=".card"):
     from playwright.sync_api import sync_playwright
     with sync_playwright() as p:
         b = p.chromium.launch()
-        page = b.new_page(viewport={"width": 800, "height": 100}) # auto-resizes to content
+        page = b.new_page(viewport={"width": 840, "height": 100})
         page.set_content(html_str)
-        page.locator(".card").screenshot(path=path)
+        try:
+            page.locator(selector).screenshot(path=path)
+        except:
+            page.locator(".b").screenshot(path=path)
         b.close()
     return path
+
+def send_photo(path, cap):
+    token = os.environ["TELEGRAM_BOT_TOKEN"]
+    chat = os.environ["TELEGRAM_CHAT_ID"]
+    with open(path, "rb") as f:
+        requests.post(f"https://api.telegram.org/bot{token}/sendPhoto", data={"chat_id": chat, "caption": cap}, files={"photo": f}, timeout=60).raise_for_status()
 
 def send_album(paths, cap):
     token = os.environ["TELEGRAM_BOT_TOKEN"]
     chat = os.environ["TELEGRAM_CHAT_ID"]
     files, media = {}, []
-    
     for i, path in enumerate(paths):
         name = f"img{i}"
         files[name] = open(path, "rb")
         item = {"type": "photo", "media": f"attach://{name}"}
         if i == 0: item["caption"] = cap
         media.append(item)
-        
-    r = requests.post(f"https://api.telegram.org/bot{token}/sendMediaGroup", data={"chat_id": chat, "media": json.dumps(media)}, files=files, timeout=60)
-    r.raise_for_status()
+    requests.post(f"https://api.telegram.org/bot{token}/sendMediaGroup", data={"chat_id": chat, "media": json.dumps(media)}, files=files, timeout=60).raise_for_status()
 
 def main():
     d = collect()
@@ -307,6 +374,15 @@ def main():
         send_album(["weather.png", "advice.png", "events.png"], cap)
     except Exception as exc:
         print("Failed to send album:", exc)
+
+    # Birthday Cards
+    for i in d["today"]:
+        if i["kind"] == "birthday":
+            try:
+                path = render_png(build_birthday_html(i["name"], i["age"]), "birthday_card.png", ".b")
+                send_photo(path, f"Happy Birthday {i['name']}!")
+            except Exception as exc:
+                print("Birthday card failed:", exc)
 
 if __name__ == "__main__":
     main()
