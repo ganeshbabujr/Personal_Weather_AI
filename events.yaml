@@ -38,7 +38,7 @@
   repeat: monthly
   day: 5
 
-  - name: Sani Pradosham
+- name: Sani Pradosham
   type: temple
   date: "2026-10-25"
 
