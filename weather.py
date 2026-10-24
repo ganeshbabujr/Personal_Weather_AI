@@ -297,43 +297,42 @@ def card_rain_alert(d):
     end_time = fmt_h(d['rain']['end'])
     
     if d['rain']['now']:
-        en_msg = f"Rain is expected to continue until {end_time}. Please secure your belongings and stay safe."
-        ta_msg = f"{end_time} வரை மழை தொடர வாய்ப்புள்ளது. தயவுசெய்து பாதுகாப்பாக இருக்கவும்."
+        en_msg = f"Rain is expected to continue until {end_time}. Please secure outdoor items."
+        ta_msg = f"{end_time} வரை மழை தொடர வாய்ப்புள்ளது. பாதுகாப்பாக இருக்கவும்."
     else:
-        en_msg = f"Rain expected to start around {start} and last until {end_time}. Please stay safe."
+        en_msg = f"Rain expected to start around {start} and last until {end_time}."
         ta_msg = f"{start} அளவில் மழை தொடங்கி {end_time} வரை தொடரலாம். பாதுகாப்பாக இருக்கவும்."
         
     return f"""<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="{FONT}">
     <style>{BASE_CSS}
-    .alert-card {{ background: linear-gradient(145deg, #0f172a, #1e293b); color: #fff; padding: 60px; border-radius: 40px; margin: 20px; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.3); border: 2px solid #334155; }}
-    </style></head><body><div class="alert-card">
+    .rain-bg {{ background: radial-gradient(circle at 50% -20%, #1e293b 0%, #020617 100%); padding: 60px; font-family: 'Outfit'; min-height: 100vh; display: flex; flex-direction: column; }}
+    .badge {{ display: inline-flex; align-items: center; gap: 12px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5; padding: 12px 24px; border-radius: 50px; font-size: 24px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; margin: 0 auto; }}
+    .city {{ font-size: 64px; font-weight: 600; color: #fff; text-align: center; margin: 40px 0 10px; letter-spacing: -1px; }}
+    .ta-city {{ font-size: 28px; color: #94a3b8; text-align: center; margin-bottom: 50px; }}
+    .bento {{ display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 30px; }}
+    .box {{ background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 32px; padding: 40px 30px; text-align: center; }}
+    .lbl {{ font-size: 24px; color: #94a3b8; margin-bottom: 16px; font-weight: 400; }}
+    .val {{ font-size: 54px; color: #38bdf8; font-weight: 600; line-height: 1; }}
+    .msg-box {{ background: linear-gradient(90deg, rgba(56,189,248,0.1) 0%, rgba(56,189,248,0) 100%); border-left: 6px solid #38bdf8; padding: 40px; border-radius: 12px 32px 32px 12px; }}
+    .en-msg {{ font-size: 32px; font-weight: 500; color: #f8fafc; line-height: 1.4; margin-bottom: 16px; }}
+    .ta-msg {{ font-size: 28px; color: #cbd5e1; line-height: 1.5; }}
+    .foot {{ text-align: center; color: #475569; font-size: 22px; margin-top: auto; padding-top: 40px; }}
+    </style></head><body><div class="rain-bg">
+    <div style="text-align:center"><div class="badge">⛈️ Sudden Rain Alert</div></div>
+    <div class="city">{esc(d['city'])}</div>
+    <div class="ta-city">திடீர் மழை எச்சரிக்கை</div>
     
-    <div style="font-size: 140px; margin-bottom: 20px; line-height: 1;">⛈️</div>
-    <div style="font-size: 46px; font-weight: 700; color: #ef4444; letter-spacing: 2px; text-transform: uppercase;">Sudden Rain Alert</div>
-    <div style="font-size: 32px; color: #fca5a5; margin-top: 10px; font-weight: 500;">திடீர் மழை எச்சரிக்கை</div>
-    
-    <div style="background: rgba(255,255,255,0.05); border-radius: 30px; padding: 40px; margin-top: 50px; border: 1px solid rgba(255,255,255,0.1);">
-        <div style="font-size: 38px; font-weight: 600; color: #e2e8f0;">{esc(d['city'])}</div>
-        
-        <div style="display: flex; justify-content: space-around; margin-top: 40px;">
-            <div>
-                <div style="font-size: 26px; color: #94a3b8;">Expected Start</div>
-                <div style="font-size: 46px; font-weight: 600; color: #38bdf8; margin-top: 10px;">{start}</div>
-            </div>
-            <div>
-                <div style="font-size: 26px; color: #94a3b8;">Rain Probability</div>
-                <div style="font-size: 46px; font-weight: 600; color: #38bdf8; margin-top: 10px;">{chance}%</div>
-            </div>
-        </div>
-        
-        <div style="margin-top: 45px; padding-top: 40px; border-top: 1px solid rgba(255,255,255,0.1);">
-            <div style="font-size: 30px; color: #cbd5e1; line-height: 1.3">{en_msg}</div>
-            <div style="font-size: 28px; color: #94a3b8; margin-top: 18px; line-height: 1.4;">{ta_msg}</div>
-        </div>
+    <div class="bento">
+        <div class="box"><div class="lbl">Expected Start</div><div class="val">{start}</div></div>
+        <div class="box"><div class="lbl">Probability</div><div class="val">{chance}%</div></div>
     </div>
     
-    <div style="font-size: 22px; color: #64748b; margin-top: 40px;">System Update: {fmt(d['now'])}</div>
+    <div class="msg-box">
+        <div class="en-msg">{en_msg}</div>
+        <div class="ta-msg">{ta_msg}</div>
+    </div>
     
+    <div class="foot">System Update: {fmt(d['now'])}</div>
     </div></body></html>"""
 
 def card_weather(d):
@@ -442,7 +441,7 @@ def render_png(html_str, path, selector=".card"):
             page.locator(selector).screenshot(path=path)
         except:
             try:
-                page.locator(".alert-card").screenshot(path=path)
+                page.locator(".rain-bg").screenshot(path=path)
             except:
                 page.locator(".b").screenshot(path=path)
         b.close()
@@ -471,7 +470,7 @@ def main():
             if alerts_text:
                 requests.post(f"https://api.telegram.org/bot{os.environ['TELEGRAM_BOT_TOKEN']}/sendMessage", json={"chat_id": os.environ["TELEGRAM_CHAT_ID"], "text": "⚠️ ALERT!\n" + "\n".join(alerts_text)})
             if rain_alert:
-                render_png(card_rain_alert(d), "alert.png", ".alert-card")
+                render_png(card_rain_alert(d), "alert.png", ".rain-bg")
                 send_photo("alert.png", f"⚠️ Sudden Rain Watch for {d['city']}: High chance of rain expected shortly!")
         return
 
