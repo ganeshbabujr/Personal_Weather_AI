@@ -14,13 +14,17 @@ jobs:
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       GOLD_API_KEY: ${{ secrets.GOLD_API_KEY }}
       ZIP_CODE: ${{ vars.ZIP_CODE }}
-      HOLIDAY_STATE: ${{ vars.HOLIDAY_STATE }}
-      EXTRA_ZIPS: ${{ vars.EXTRA_ZIPS }}
-      SCHOOL_DROP: ${{ vars.SCHOOL_DROP }}
-      SCHOOL_PICKUP: ${{ vars.SCHOOL_PICKUP }}
-      WATCH: ${{ vars.WATCH }}
+      SHEET_CSV_URL: ${{ vars.SHEET_CSV_URL }}
     steps:
       - uses: actions/checkout@v4
+      - name: Get current date
+        id: date
+        run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+      - name: Cache metal rates
+        uses: actions/cache@v4
+        with:
+          path: metals.json
+          key: metals-${{ steps.date.outputs.date }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -36,9 +40,3 @@ jobs:
             *.png
           retention-days: 3
           if-no-files-found: ignore
-      - name: Tell me if it failed
-        if: failure()
-        run: >
-          curl -s "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"
-          -d chat_id="${TELEGRAM_CHAT_ID}"
-          -d text="Daily weather briefing failed. Open GitHub Actions to see why."
