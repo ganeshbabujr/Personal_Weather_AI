@@ -12,6 +12,7 @@ jobs:
       OWM_API_KEY: ${{ secrets.OWM_API_KEY }}
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      GOLD_API_KEY: ${{ secrets.GOLD_API_KEY }}
       ZIP_CODE: ${{ vars.ZIP_CODE }}
       WIND_LIMIT: ${{ vars.WIND_LIMIT }}
     steps:
