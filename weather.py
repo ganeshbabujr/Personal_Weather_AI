@@ -1,9 +1,9 @@
-"""Daily family briefing: 3-card layout + Rain Watch + 1-min intervals + Gold Rates.
+"""Daily family briefing: 3-card layout + Rain Watch + Gold Rates + Google Sheets.
 
 Run daily:   python weather.py
 Run as watch: python weather.py --watch
 """
-import os, sys, time, json, requests, yaml, html
+import os, sys, time, json, requests, yaml, html, csv
 from datetime import datetime, timezone, timedelta
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -20,12 +20,19 @@ def owm_emoji(main, night=False):
     return {"Clouds": "☁️", "Rain": "🌧️", "Drizzle": "🌦️", "Thunderstorm": "⛈️", "Snow": "❄️"}.get(main, "🌫️")
 
 def get_metals():
+    # Attempt to load from GitHub Actions cache first to save API limits
+    try:
+        with open("metals.json", "r") as f: return json.load(f)
+    except FileNotFoundError: pass
+
     key = os.environ.get("GOLD_API_KEY")
     if not key: return None
     try:
         g = session.get("https://www.goldapi.io/api/XAU/INR", headers={"x-access-token": key}, timeout=10).json()
         s = session.get("https://www.goldapi.io/api/XAG/INR", headers={"x-access-token": key}, timeout=10).json()
-        return {"gold22": int((g["price"] / 31.103) * 0.916), "silver": int(s["price"] / 31.103)}
+        data = {"gold22": int((g["price"] / 31.103) * 0.916), "silver": int(s["price"] / 31.103)}
+        with open("metals.json", "w") as f: json.dump(data, f) # Save for caching
+        return data
     except: return None
 
 def openmeteo(lat, lon):
@@ -93,9 +100,34 @@ def get_panchangam(dt, sunrise, sunset):
     }
 
 def load_events():
+    events = []
+    # 1. Load from fallback local yaml if it exists
     try:
-        with open("events.yaml", encoding="utf-8") as f: return yaml.safe_load(f) or []
-    except: return []
+        with open("events.yaml", encoding="utf-8") as f: events.extend(yaml.safe_load(f) or [])
+    except FileNotFoundError: pass
+
+    # 2. Load from Google Sheets CSV
+    sheet_url = os.environ.get("SHEET_CSV_URL")
+    if sheet_url:
+        try:
+            r = session.get(sheet_url, timeout=10)
+            r.raise_for_status()
+            r.encoding = 'utf-8'
+            reader = csv.DictReader(r.text.splitlines())
+            for row in reader:
+                if not row.get("name"): continue
+                events.append({
+                    "name": row["name"].strip(),
+                    "date": row.get("date", "").strip(),
+                    "type": row.get("type", "event").strip().lower(),
+                    "repeat": row.get("repeat", "").strip().lower(),
+                    "year": row.get("year", "").strip(),
+                    "day": row.get("day", "").strip()
+                })
+        except Exception as e:
+            print("Failed to load Google Sheet:", e)
+            
+    return events
 
 def holiday_table(year, state):
     try:
@@ -106,9 +138,9 @@ def holiday_table(year, state):
 def matches(e, day):
     rep = e.get("repeat")
     if rep == "daily": return True
-    if rep == "weekly": return day.strftime("%a") in [str(x)[:3].title() for x in e.get("days", [])]
-    if rep == "monthly": return day.day == int(e.get("day", 0))
-    return str(e.get("date", "")) in (day.isoformat(), day.strftime("%m-%d"))
+    if rep == "monthly": return str(day.day) == str(e.get("day", ""))
+    if rep == "yearly": return str(e.get("date", "")) in (day.isoformat(), day.strftime("%m-%d"))
+    return str(e.get("date", "")) == day.isoformat()
 
 def items_for(day, events, hol, upcoming=False):
     out = []
