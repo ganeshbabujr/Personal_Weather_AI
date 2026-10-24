@@ -34,8 +34,8 @@ def openmeteo(lat, lon):
         print("Open-Meteo unavailable:", exc)
         return None
 
-def get_panchangam(dt):
-    """Calculates exact Hindu Tithi, Nakshatra, and Tamil Solar Month for morning, noon, and evening."""
+def get_panchangam(dt, sunrise, sunset):
+    """Calculates Tithi, Nakshatra, Tamil Date, and exact daily timings based on local sunrise."""
     try:
         import ephem
         import math
@@ -47,7 +47,6 @@ def get_panchangam(dt):
     special = set()
     nak_names = set()
 
-    # Check 3 times a day to catch Tithis that start or end mid-day
     for hr in [6, 12, 18]:
         check_time = dt.replace(hour=hr, minute=0, second=0)
         obs.date = check_time.astimezone(timezone.utc)
@@ -57,7 +56,6 @@ def get_panchangam(dt):
         sun_deg = math.degrees(ephem.Ecliptic(sun).lon)
         moon_deg = math.degrees(ephem.Ecliptic(moon).lon)
 
-        # 1. Calculate Tithi
         diff = (moon_deg - sun_deg) % 360
         tithi_num = int(diff / 12.0) + 1
         tithis = ["Prathama", "Dwitiya", "Tritiya", "Chaturthi", "Panchami", "Shashti", "Saptami", "Ashtami", "Navami", "Dashami", "Ekadasi", "Dwadashi", "Trayodashi", "Chaturdashi", "Purnima",
@@ -68,7 +66,7 @@ def get_panchangam(dt):
         if tithi_name == "Purnima": special.add("🌕 Pournami (பௌர்ணமி)")
         if tithi_name == "Ekadasi": special.add("🙏 Ekadasi (ஏகாதசி) - Fasting day")
         if tithi_name == "Trayodashi":
-            if check_time.weekday() == 5: # Saturday
+            if check_time.weekday() == 5:
                 special.add("🛕 Sani Pradosham (சனி பிரதோஷம்) - Go to Sivan temple")
             else:
                 special.add("🛕 Pradosham (பிரதோஷம்) - Go to Sivan temple")
@@ -77,8 +75,7 @@ def get_panchangam(dt):
         if tithi_name == "Ashtami": special.add("⚠️ Ashtami (அஷ்டமி)")
         if tithi_name == "Navami": special.add("⚠️ Navami (நவமி)")
 
-        # 2. Calculate Nakshatram
-        ayanamsa = 24.15 # Approx Lahiri Ayanamsa
+        ayanamsa = 24.15 
         nirayana_moon = (moon_deg - ayanamsa) % 360
         nak_num = int(nirayana_moon / (360/27.0))
         nakshatras = ["Aswini", "Bharani", "Karthigai", "Rohini", "Mrigasira", "Arudra", "Punarvasu", "Pushya", "Ashlesha",
@@ -90,39 +87,50 @@ def get_panchangam(dt):
         if nak_name == "Karthigai": special.add("🪔 Kiruthigai (கிருத்திகை)")
         if nak_name == "Thiruvonam": special.add("🌸 Thiruvonam (திருவோணம்)")
 
-    # 3. Calculate Tamil Solar Month & Date (using noon position)
     obs.date = dt.replace(hour=12).astimezone(timezone.utc)
     sun.compute(obs)
     sun_deg = math.degrees(ephem.Ecliptic(sun).lon)
     nirayana_sun = (sun_deg - ayanamsa) % 360
     month_num = int(nirayana_sun / 30)
     months = ["Chithirai", "Vaikasi", "Aani", "Aadi", "Avani", "Purattasi", "Aippasi", "Karthigai", "Margazhi", "Thai", "Masi", "Panguni"]
-    tamil_month = months[month_num]
     
     rasi_deg = nirayana_sun % 30
     day_num = int(rasi_deg / 0.9856) + 1
 
+    # Exact Daily Timings (Dividing daytime into 8 parts)
+    day_idx = dt.weekday() # 0 = Mon, 6 = Sun
+    rahu_parts = [1, 6, 4, 5, 3, 2, 7]
+    yama_parts = [3, 2, 1, 0, 6, 5, 4]
+    kuli_parts = [5, 4, 3, 2, 1, 0, 6]
+    nalla_neram_map = [
+        "6:30 AM - 7:30 AM, 4:30 PM - 5:30 PM", # Mon
+        "7:30 AM - 8:30 AM, 4:30 PM - 5:30 PM", # Tue
+        "9:00 AM - 10:00 AM, 4:30 PM - 5:30 PM", # Wed
+        "10:30 AM - 11:30 AM, 12:00 PM - 1:00 PM", # Thu
+        "9:30 AM - 10:30 AM, 4:30 PM - 5:30 PM", # Fri
+        "7:30 AM - 8:30 AM, 4:30 PM - 5:30 PM", # Sat
+        "7:30 AM - 8:30 AM, 3:30 PM - 4:30 PM", # Sun
+    ]
+    
+    part_dur = (sunset - sunrise) / 8
+    def get_time(p):
+        start = sunrise + (part_dur * p)
+        end = start + part_dur
+        return f"{start.strftime('%I:%M %p').lstrip('0')} - {end.strftime('%I:%M %p').lstrip('0')}"
+
     return {
         "special": sorted(list(special)),
         "nakshatra": " / ".join(sorted(list(nak_names))),
-        "tamil_date": f"{tamil_month} {day_num}"
+        "tamil_date": f"{months[month_num]} {day_num}",
+        "rahu": get_time(rahu_parts[day_idx]),
+        "yama": get_time(yama_parts[day_idx]),
+        "kuli": get_time(kuli_parts[day_idx]),
+        "nalla": nalla_neram_map[day_idx]
     }
 
 def fmt(dt): return dt.strftime("%I:%M %p").lstrip("0")
 def fmt_h(h): return f"{h % 12 or 12}:00 {'AM' if h < 12 else 'PM'}"
 def short_h(h): return f"{h % 12 or 12}{'A' if h < 12 else 'P'}"
-
-def wmo_emoji(c):
-    if c == 0: return "☀️"
-    if c in (1, 2): return "🌤️"
-    if c == 3: return "☁️"
-    if c in (45, 48): return "🌫️"
-    if 51 <= c <= 57 or c in (80, 81, 82): return "🌦️"
-    if 61 <= c <= 67: return "🌧️"
-    if 71 <= c <= 77 or c in (85, 86): return "❄️"
-    if c >= 95: return "⛈️"
-    return "🌤️"
-
 def owm_emoji(main, night=False):
     if main == "Clear": return "🌙" if night else "☀️"
     return {"Clouds": "☁️", "Rain": "🌧️", "Drizzle": "🌦️", "Thunderstorm": "⛈️", "Snow": "❄️"}.get(main, "🌫️")
@@ -134,8 +142,7 @@ FESTIVALS = ("diwali", "deepavali", "pongal", "holi", "eid", "christmas", "onam"
 
 def load_events():
     try:
-        with open("events.yaml", encoding="utf-8") as f:
-            return yaml.safe_load(f) or []
+        with open("events.yaml", encoding="utf-8") as f: return yaml.safe_load(f) or []
     except FileNotFoundError: return []
 
 def holiday_table(year, state):
@@ -165,10 +172,8 @@ def items_for(day, events, hol, upcoming=False):
         out.append({"icon": ICONS.get(kind, "📌"), "text": text, "kind": kind, "name": e["name"], "age": age, "special": rep != "daily"})
     if day in hol:
         name = hol[day]
-        if not upcoming and any(k in name.lower() for k in FESTIVALS):
-            out.append({"icon": "🎉", "text": f"Happy {name}!", "kind": "holiday", "special": True})
-        else:
-            out.append({"icon": ICONS["holiday"], "text": f"Holiday: {name}", "kind": "holiday", "special": True})
+        if not upcoming and any(k in name.lower() for k in FESTIVALS): out.append({"icon": "🎉", "text": f"Happy {name}!", "kind": "holiday", "special": True})
+        else: out.append({"icon": ICONS["holiday"], "text": f"Holiday: {name}", "kind": "holiday", "special": True})
     return out
 
 # ----------------------------------------------------------------- data
@@ -195,7 +200,7 @@ def collect():
     d = {"city": cur["name"], "now": now, "temp": cur["main"]["temp"], "feels": cur["main"]["feels_like"],
          "humidity": cur["main"]["humidity"], "cond": cur["weather"][0]["description"].title(),
          "main": cur["weather"][0]["main"], "night": night, "sunrise": sunrise, "sunset": sunset,
-         "aqi": aq["main"]["aqi"], "pm25": aq["components"]["pm2_5"], "panchangam": get_panchangam(now)}
+         "aqi": aq["main"]["aqi"], "pm25": aq["components"]["pm2_5"], "panchangam": get_panchangam(now, sunrise, sunset)}
     
     d["t_min"] = min([s["main"]["temp_min"] for s in slots] + [d["temp"]])
     d["t_max"] = max([s["main"]["temp_max"] for s in slots] + [d["temp"]])
@@ -225,7 +230,7 @@ def collect():
     if om:
         dd = om["daily"]
         for i in range(1, 6):
-            outlook.append({"label": datetime.fromisoformat(dd["time"][i]).strftime("%a"), "emoji": wmo_emoji(dd["weather_code"][i]),
+            outlook.append({"label": datetime.fromisoformat(dd["time"][i]).strftime("%a"), "emoji": owm_emoji(None) if dd["weather_code"][i] == 0 else "☁️",
                             "hi": dd["temperature_2m_max"][i], "lo": dd["temperature_2m_min"][i], "pop": dd["precipitation_probability_max"][i] or 0})
     d["outlook"] = outlook
 
@@ -260,12 +265,6 @@ def collect():
     else:
         adv.append(("🧺", "துணிகளை வெளியே காயவைக்க நல்ல நாள்"))
         
-    for var, label in (("SCHOOL_DROP", "பள்ளி செல்லும்"), ("SCHOOL_PICKUP", "பள்ளி முடியும்")):
-        t = os.environ.get(var)
-        if t and d["rain"]:
-            hr, mn = (int(x) for x in (t.split(":") + ["0"])[:2])
-            if d["rain"]["start"] <= hr < d["rain"]["end"]:
-                adv.append(("🎒", f"{label} நேரத்தில் மழை வரலாம். குடை கொடுத்தனுப்பவும்"))
     d["advice"] = adv
     return d
 
@@ -346,18 +345,26 @@ def card_weather(d):
         <div style="font-size:140px">{icon}</div>
     </div>"""
     
-    out = "".join(f'<div style="text-align:center"><div style="font-size:24px;color:#475467">{o["label"]}</div><div style="font-size:46px;margin:10px 0">{o["emoji"]}</div><div style="font-size:26px;font-weight:600">{o["hi"]:.0f}°</div><div style="font-size:22px;color:#667085">{o["lo"]:.0f}°</div><div style="font-size:19px;color:#175CD3;margin-top:5px;height:22px">{"💧"+str(o["pop"])+"%" if o["pop"]>=40 else ""}</div></div>' for o in d["outlook"])
-    return template(f"{d['city']} Weather", d, head + stats + strip + f'<div class="sec"><div class="t">5-Day Outlook</div><div style="display:grid;grid-template-columns:repeat(5,1fr)">{out}</div></div>')
+    return template(f"{d['city']} Weather", d, head + stats + strip)
 
 def card_advice(d):
     p = d.get("panchangam")
     panch_html = ""
     if p:
         sp = "".join(f'<div class="row"><span class="i" style="font-size:32px">{i.split(" ")[0]}</span><span>{esc(" ".join(i.split(" ")[1:]))}</span></div>' for i in p["special"])
+        time_grid = f"""
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px">
+            <div style="background:#fff;padding:15px;border-radius:15px;box-shadow:0 2px 5px rgba(0,0,0,0.05)"><div style="font-size:22px;color:#93370D;margin-bottom:5px">நல்ல நேரம்</div><div style="font-size:24px;font-weight:600;color:#1E293B">{p['nalla']}</div></div>
+            <div style="background:#fff;padding:15px;border-radius:15px;box-shadow:0 2px 5px rgba(0,0,0,0.05)"><div style="font-size:22px;color:#93370D;margin-bottom:5px">ராகு காலம்</div><div style="font-size:24px;font-weight:600;color:#1E293B">{p['rahu']}</div></div>
+            <div style="background:#fff;padding:15px;border-radius:15px;box-shadow:0 2px 5px rgba(0,0,0,0.05)"><div style="font-size:22px;color:#93370D;margin-bottom:5px">எமகண்டம்</div><div style="font-size:24px;font-weight:600;color:#1E293B">{p['yama']}</div></div>
+            <div style="background:#fff;padding:15px;border-radius:15px;box-shadow:0 2px 5px rgba(0,0,0,0.05)"><div style="font-size:22px;color:#93370D;margin-bottom:5px">குளிகை</div><div style="font-size:24px;font-weight:600;color:#1E293B">{p['kuli']}</div></div>
+        </div>"""
+        
         panch_html = f"""<div class="sec" style="background:#FFF6D6;border-bottom:1px solid #FDE68A">
-        <div class="t" style="color:#93370D;margin-bottom:10px">Hindu Calendar & Panchangam</div>
-        <div style="font-size:28px;color:#B45309;margin-bottom:15px;font-weight:500">📅 Tamil Date: {p['tamil_date']} &nbsp;|&nbsp; 🌙 {p['nakshatra']} Nakshatram</div>
+        <div class="t" style="color:#93370D;margin-bottom:10px">Hindu Calendar & Timings</div>
+        <div style="font-size:28px;color:#B45309;margin-bottom:15px;font-weight:500">📅 {p['tamil_date']} &nbsp;|&nbsp; 🌙 {p['nakshatra']}</div>
         {sp}
+        {time_grid}
         </div>"""
     
     items = "".join(f'<div class="row"><span class="i">{i}</span><span>{esc(t)}</span></div>' for i, t in d["advice"])
@@ -442,7 +449,6 @@ def main():
     except Exception as exc:
         print("Failed to send album:", exc)
 
-    # Birthday Cards
     for i in d["today"]:
         if i["kind"] == "birthday":
             try:
