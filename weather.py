@@ -256,7 +256,7 @@ def collect():
 
 # ----------------------------------------------------------------- HTML Templates
 
-FONT = "https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&display=swap"
+FONT = "https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap"
 BASE_CSS = """
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Outfit',sans-serif;background:#F9FAFB;color:#0F172A;line-height:1.3;width:800px}
@@ -290,6 +290,42 @@ def template(title, d, content):
 <style>{BASE_CSS}</style></head><body><div class="card" style="--a:{a};--b:{b}">
 <div class="head"><div class="title">{title}</div><div class="date">{d["now"].strftime('%A, %d %b %Y')}</div></div>
 {content}</div></body></html>"""
+
+def card_rain_alert(d):
+    start = "Now" if d['rain']['now'] else fmt_h(d['rain']['start'])
+    chance = d['rain']['chance']
+    return f"""<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="{FONT}">
+    <style>{BASE_CSS}
+    .alert-card {{ background: linear-gradient(145deg, #0f172a, #1e293b); color: #fff; padding: 60px; border-radius: 40px; margin: 20px; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.3); border: 2px solid #334155; }}
+    </style></head><body><div class="alert-card">
+    
+    <div style="font-size: 140px; margin-bottom: 20px; line-height: 1;">⛈️</div>
+    <div style="font-size: 46px; font-weight: 700; color: #ef4444; letter-spacing: 2px; text-transform: uppercase;">Sudden Rain Alert</div>
+    <div style="font-size: 32px; color: #fca5a5; margin-top: 10px; font-weight: 500;">திடீர் மழை எச்சரிக்கை</div>
+    
+    <div style="background: rgba(255,255,255,0.05); border-radius: 30px; padding: 40px; margin-top: 50px; border: 1px solid rgba(255,255,255,0.1);">
+        <div style="font-size: 38px; font-weight: 600; color: #e2e8f0;">{esc(d['city'])}</div>
+        
+        <div style="display: flex; justify-content: space-around; margin-top: 40px;">
+            <div>
+                <div style="font-size: 26px; color: #94a3b8;">Expected Start</div>
+                <div style="font-size: 46px; font-weight: 600; color: #38bdf8; margin-top: 10px;">{start}</div>
+            </div>
+            <div>
+                <div style="font-size: 26px; color: #94a3b8;">Rain Probability</div>
+                <div style="font-size: 46px; font-weight: 600; color: #38bdf8; margin-top: 10px;">{chance}%</div>
+            </div>
+        </div>
+        
+        <div style="margin-top: 45px; padding-top: 40px; border-top: 1px solid rgba(255,255,255,0.1);">
+            <div style="font-size: 30px; color: #cbd5e1;">Rain expected shortly. Please secure your belongings and stay safe.</div>
+            <div style="font-size: 28px; color: #94a3b8; margin-top: 18px; line-height: 1.4;">சற்று நேரத்தில் மழை தொடங்க வாய்ப்புள்ளது. தயவுசெய்து பாதுகாப்பாக இருக்கவும்.</div>
+        </div>
+    </div>
+    
+    <div style="font-size: 22px; color: #64748b; margin-top: 40px;">System Update: {fmt(d['now'])}</div>
+    
+    </div></body></html>"""
 
 def card_weather(d):
     icon = owm_emoji(d["main"], d["night"])
@@ -396,7 +432,10 @@ def render_png(html_str, path, selector=".card"):
         try:
             page.locator(selector).screenshot(path=path)
         except:
-            page.locator(".b").screenshot(path=path)
+            try:
+                page.locator(".alert-card").screenshot(path=path)
+            except:
+                page.locator(".b").screenshot(path=path)
         b.close()
     return path
 
@@ -423,8 +462,8 @@ def main():
             if alerts_text:
                 requests.post(f"https://api.telegram.org/bot{os.environ['TELEGRAM_BOT_TOKEN']}/sendMessage", json={"chat_id": os.environ["TELEGRAM_CHAT_ID"], "text": "⚠️ ALERT!\n" + "\n".join(alerts_text)})
             if rain_alert:
-                render_png(card_weather(d), "weather.png")
-                send_photo("weather.png", f"🌧️ Sudden Rain Watch for {d['city']}: High chance of rain expected shortly!")
+                render_png(card_rain_alert(d), "alert.png", ".alert-card")
+                send_photo("alert.png", f"⚠️ Sudden Rain Watch for {d['city']}: High chance of rain expected shortly!")
         return
 
     # ------------------ DAILY BRIEFING MODE ------------------
