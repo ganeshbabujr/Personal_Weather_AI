@@ -448,7 +448,7 @@ def build_html(d):
             cols += f'<div class="col"><div class="bar" style="height:{max(8, p * 1.2):.0f}px;background:{color}"></div><div class="lab">{lab}</div></div>'
         if d["rain"]:
             r = d["rain"]
-            call = "Raining now" if r["now"] else f"Expected around {fmt_h(r['start'])}"
+            call = "High chance of rain now" if r["now"] else f"Expected around {fmt_h(r['start'])}"
             call += f", {r['chance']}% chance"
         else:
             call = "Dry through the day"
