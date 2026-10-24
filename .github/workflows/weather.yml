@@ -2,8 +2,8 @@ name: Daily Family Briefing
 
 on:
   schedule:
-    - cron: "30 0 * * *"   # 00:30 UTC = 6:00 AM IST (GitHub may delay 5-30 min)
-  workflow_dispatch:        # manual test run
+    - cron: "30 0 * * *"
+  workflow_dispatch:
 
 jobs:
   send:
@@ -30,10 +30,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: card
+          name: cards
           path: |
-            card.png
-            card.html
+            *.png
           retention-days: 3
           if-no-files-found: ignore
       - name: Tell me if it failed
