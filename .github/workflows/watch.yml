@@ -14,9 +14,18 @@ jobs:
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       GOLD_API_KEY: ${{ secrets.GOLD_API_KEY }}
       ZIP_CODE: ${{ vars.ZIP_CODE }}
+      SHEET_CSV_URL: ${{ vars.SHEET_CSV_URL }}
       WIND_LIMIT: ${{ vars.WIND_LIMIT }}
     steps:
       - uses: actions/checkout@v4
+      - name: Get current date
+        id: date
+        run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+      - name: Cache metal rates
+        uses: actions/cache@v4
+        with:
+          path: metals.json
+          key: metals-${{ steps.date.outputs.date }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
