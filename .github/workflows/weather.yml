@@ -2,7 +2,7 @@ name: Daily Family Briefing
 
 on:
   schedule:
-    - cron: "30 0 * * *"
+    - cron: "30 0 * * *"        # 6:00 AM IST (GitHub can start it 10-30 min late at busy times)
   workflow_dispatch:
 
 jobs:
@@ -15,6 +15,14 @@ jobs:
       GOLD_API_KEY: ${{ secrets.GOLD_API_KEY }}
       ZIP_CODE: ${{ vars.ZIP_CODE }}
       SHEET_CSV_URL: ${{ vars.SHEET_CSV_URL }}
+      HOLIDAY_STATE: ${{ vars.HOLIDAY_STATE }}
+      EXTRA_ZIPS: ${{ vars.EXTRA_ZIPS }}
+      SCHOOL_DROP: ${{ vars.SCHOOL_DROP }}
+      SCHOOL_PICKUP: ${{ vars.SCHOOL_PICKUP }}
+      WATCH: ${{ vars.WATCH }}
+      WIND_LIMIT: ${{ vars.WIND_LIMIT }}
+      BRIEF_LANG: ${{ vars.BRIEF_LANG }}
+      BIG_TEXT: ${{ vars.BIG_TEXT }}
     steps:
       - uses: actions/checkout@v4
       - name: Get current date
@@ -40,3 +48,9 @@ jobs:
             *.png
           retention-days: 3
           if-no-files-found: ignore
+      - name: Tell me if the run failed
+        if: failure()
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d chat_id="${TELEGRAM_CHAT_ID}" \
+            --data-urlencode text="⚠️ Weather bot failed: ${{ github.workflow }}. Details: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
