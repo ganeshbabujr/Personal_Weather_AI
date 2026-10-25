@@ -1,9 +1,9 @@
-"""Daily family briefing: 3-card layout + Rain Watch + Gold Rates + Google Sheets.
+"""Daily family briefing: Premium Dashboard + Rain Watch + Gold Rates + Countdowns.
 
 Run daily:   python weather.py
 Run as watch: python weather.py --watch
 """
-import os, sys, time, json, requests, yaml, html, csv
+import os, sys, time, json, requests, csv, html
 from datetime import datetime, timezone, timedelta
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -15,12 +15,7 @@ retries = Retry(total=3, backoff_factor=1, status_forcelist=[500, 502, 503, 504]
 session.mount('http://', HTTPAdapter(max_retries=retries))
 session.mount('https://', HTTPAdapter(max_retries=retries))
 
-def owm_emoji(main, night=False):
-    if main == "Clear": return "🌙" if night else "☀️"
-    return {"Clouds": "☁️", "Rain": "🌧️", "Drizzle": "🌦️", "Thunderstorm": "⛈️", "Snow": "❄️"}.get(main, "🌫️")
-
 def get_metals():
-    # Attempt to load from GitHub Actions cache first to save API limits
     try:
         with open("metals.json", "r") as f: return json.load(f)
     except FileNotFoundError: pass
@@ -31,7 +26,7 @@ def get_metals():
         g = session.get("https://www.goldapi.io/api/XAU/INR", headers={"x-access-token": key}, timeout=10).json()
         s = session.get("https://www.goldapi.io/api/XAG/INR", headers={"x-access-token": key}, timeout=10).json()
         data = {"gold22": int((g["price"] / 31.103) * 0.916), "silver": int(s["price"] / 31.103)}
-        with open("metals.json", "w") as f: json.dump(data, f) # Save for caching
+        with open("metals.json", "w") as f: json.dump(data, f)
         return data
     except: return None
 
@@ -51,7 +46,7 @@ def get_panchangam(dt, sunrise, sunset):
         import ephem
         import math
     except ImportError:
-        return None
+        return {}
 
     obs = ephem.Observer()
     special = set()
@@ -70,18 +65,15 @@ def get_panchangam(dt, sunrise, sunset):
 
         if tithi_name == "Amavasya": special.add("🌑 Amavasya (அமாவாசை)")
         if tithi_name == "Purnima": special.add("🌕 Pournami (பௌர்ணமி)")
-        if tithi_name == "Ekadasi": special.add("🙏 Ekadasi (ஏகாதசி) - Fasting day")
+        if tithi_name == "Ekadasi": special.add("🙏 Ekadasi (ஏகாதசி)")
         if tithi_name == "Trayodashi": special.add(f"🛕 {'Sani ' if check_time.weekday() == 5 else ''}Pradosham (பிரதோஷம்)")
         if tithi_name == "Chaturthi": special.add("🐘 Chaturthi (சதுர்த்தி)")
         if tithi_name == "Shashti": special.add("🦚 Shashti (சஷ்டி)")
-        if tithi_name in ["Ashtami", "Navami"]: special.add(f"⚠️ {tithi_name} ({'அஷ்டமி' if tithi_name=='Ashtami' else 'நவமி'})")
 
         nak_name = ["Aswini", "Bharani", "Karthigai", "Rohini", "Mrigasira", "Arudra", "Punarvasu", "Pushya", "Ashlesha",
                     "Magam", "Pooram", "Uthiram", "Hastham", "Chithirai", "Swathi", "Visakam", "Anusham", "Kettai",
                     "Moolam", "Pooradam", "Uthiradam", "Thiruvonam", "Avittam", "Sadayam", "Poorattadhi", "Uthirattadhi", "Revathi"][int(((moon_deg - 24.15) % 360) / (360/27.0))]
         nak_names.add(nak_name)
-        if nak_name == "Karthigai": special.add("🪔 Kiruthigai (கிருத்திகை)")
-        if nak_name == "Thiruvonam": special.add("🌸 Thiruvonam (திருவோணம்)")
 
     obs.date = dt.replace(hour=12).astimezone(timezone.utc)
     sun.compute(obs)
@@ -96,17 +88,11 @@ def get_panchangam(dt, sunrise, sunset):
         "nakshatra": " / ".join(sorted(list(nak_names))),
         "tamil_date": f"{['Chithirai', 'Vaikasi', 'Aani', 'Aadi', 'Avani', 'Purattasi', 'Aippasi', 'Karthigai', 'Margazhi', 'Thai', 'Masi', 'Panguni'][int(nirayana_sun / 30)]} {int((nirayana_sun % 30) / 0.9856) + 1}",
         "rahu": get_time([1, 6, 4, 5, 3, 2, 7][day_idx]), "yama": get_time([3, 2, 1, 0, 6, 5, 4][day_idx]), "kuli": get_time([5, 4, 3, 2, 1, 0, 6][day_idx]),
-        "nalla": ["6:30 AM - 7:30 AM, 4:30 PM - 5:30 PM", "7:30 AM - 8:30 AM, 4:30 PM - 5:30 PM", "9:00 AM - 10:00 AM, 4:30 PM - 5:30 PM", "10:30 AM - 11:30 AM, 12:00 PM - 1:00 PM", "9:30 AM - 10:30 AM, 4:30 PM - 5:30 PM", "7:30 AM - 8:30 AM, 4:30 PM - 5:30 PM", "7:30 AM - 8:30 AM, 3:30 PM - 4:30 PM"][day_idx]
+        "nalla": ["6:30-7:30 AM", "7:30-8:30 AM", "9:00-10:00 AM", "10:30-11:30 AM", "9:30-10:30 AM", "7:30-8:30 AM", "7:30-8:30 AM"][day_idx]
     }
 
 def load_events():
     events = []
-    # 1. Load from fallback local yaml if it exists
-    try:
-        with open("events.yaml", encoding="utf-8") as f: events.extend(yaml.safe_load(f) or [])
-    except FileNotFoundError: pass
-
-    # 2. Load from Google Sheets CSV
     sheet_url = os.environ.get("SHEET_CSV_URL")
     if sheet_url:
         try:
@@ -126,8 +112,16 @@ def load_events():
                 })
         except Exception as e:
             print("Failed to load Google Sheet:", e)
-            
     return events
+
+def matches(e, day):
+    rep = e.get("repeat")
+    if rep == "daily": return True
+    if rep == "monthly": return str(day.day) == str(e.get("day", ""))
+    if rep == "bimonthly_odd": return str(day.day) == str(e.get("day", "")) and day.month % 2 != 0
+    if rep == "bimonthly_even": return str(day.day) == str(e.get("day", "")) and day.month % 2 == 0
+    if rep == "yearly": return str(e.get("date", "")) in (day.isoformat(), day.strftime("%m-%d"))
+    return str(e.get("date", "")) == day.isoformat()
 
 def holiday_table(year, state):
     try:
@@ -135,16 +129,9 @@ def holiday_table(year, state):
         return holidays.country_holidays("IN", subdiv=state or None, years=[year, year + 1])
     except: return {}
 
-def matches(e, day):
-    rep = e.get("repeat")
-    if rep == "daily": return True
-    if rep == "monthly": return str(day.day) == str(e.get("day", ""))
-    if rep == "yearly": return str(e.get("date", "")) in (day.isoformat(), day.strftime("%m-%d"))
-    return str(e.get("date", "")) == day.isoformat()
-
 def items_for(day, events, hol, upcoming=False):
     out = []
-    ICONS = {"birthday": "🎂", "anniversary": "💐", "event": "📌", "reminder": "⏰", "bill": "💳", "temple": "🛕", "holiday": "🏖️"}
+    ICONS = {"birthday": "🎂", "anniversary": "💐", "event": "📌", "reminder": "⏰", "bill": "⚡", "temple": "🛕", "holiday": "🏖️"}
     for e in events:
         if not matches(e, day): continue
         if upcoming and e.get("repeat") in ("daily", "weekly"): continue
@@ -155,7 +142,7 @@ def items_for(day, events, hol, upcoming=False):
             text += f" turns {age}" if kind == "birthday" else f" ({age} years)"
         out.append({"icon": ICONS.get(kind, "📌"), "text": text, "kind": kind, "name": e["name"], "age": age})
     if day in hol:
-        out.append({"icon": "🎉" if any(k in hol[day].lower() for k in ("diwali","deepavali","pongal","holi","eid","christmas","onam","ugadi","navratri","dussehra","ganesh","new year")) else ICONS.get("holiday", "🏖️"), "text": hol[day], "kind": "holiday"})
+        out.append({"icon": "🎉" if any(k in hol[day].lower() for k in ("diwali","deepavali","pongal","holi","new year")) else ICONS.get("holiday", "🏖️"), "text": hol[day], "kind": "holiday"})
     return out
 
 def collect():
@@ -178,7 +165,7 @@ def collect():
     slots = [s for s in fc["list"] if at(s["dt"]).date() == today and at(s["dt"]) + timedelta(hours=3) > now]
 
     d = {"city": cur["name"], "now": now, "temp": cur["main"]["temp"], "feels": cur["main"]["feels_like"], "cond": cur["weather"][0]["description"].title(),
-         "main": cur["weather"][0]["main"], "night": night, "sunrise": sunrise, "sunset": sunset, "icon": owm_emoji(cur["weather"][0]["main"], night),
+         "main": cur["weather"][0]["main"], "night": night, "sunrise": sunrise, "sunset": sunset, 
          "aqi": aq["main"]["aqi"], "pm25": aq["components"]["pm2_5"], "panchangam": get_panchangam(now, sunrise, sunset), "metals": get_metals()}
     
     d["t_min"] = min([s["main"]["temp_min"] for s in slots] + [d["temp"]])
@@ -192,7 +179,7 @@ def collect():
             if dt.date() == today: hourly[dt.hour] = {"pop": h["precipitation_probability"][i] or 0, "uv": h["uv_index"][i]}
     d["hourly"] = hourly
 
-    wet = [hr for hr in sorted(hourly) if hr >= now.hour and hourly[hr]["pop"] >= 50]
+    wet = [hr for hr in sorted(hourly) if hr >= now.hour and hourly[hr]["pop"] >= 20]
     d["rain"] = None
     if wet:
         end = wet[0]
@@ -215,20 +202,19 @@ def collect():
     for i in range(1, 31):
         day = today + timedelta(days=i)
         for it in items_for(day, events, hol, upcoming=True):
-            it["when"] = "tomorrow" if i == 1 else f"in {i} days"
+            it["days_left"] = i  # This fixes the UI missing key error
             d["upcoming"].append(it)
     d["upcoming"] = d["upcoming"][:8] 
 
     adv = []
-    if d["uv"] and d["uv"] >= 6: adv.append(("🧴", f"அதிக UV ({d['uv']:.0f}). குடை பயன்படுத்தவும்"))
-    if d["feels"] >= 35: adv.append(("☀️", "வெப்பமான நாள். போதுமான தண்ணீர் குடிக்கவும்"))
+    if d["uv"] and d["uv"] >= 6: adv.append(("☀️", f"High UV ({d['uv']:.0f}). Please use sun protection or an umbrella."))
+    if d["feels"] >= 35: adv.append(("🌡️", "It's feeling quite hot today. Stay hydrated."))
     if d["rain"]:
-        adv.append(("☔", f"{'இப்போது' if d['rain']['now'] else f'{d['rain']['start'] % 12 or 12}:00 அளவில்'} மழை வரலாம்: குடை எடுத்துச் செல்லவும்"))
-        adv.append(("🧺", "இன்று வெளியே துணி காயவைக்க வேண்டாம்"))
-    else: adv.append(("🧺", "துணிகளை வெளியே காயவைக்க நல்ல நாள்"))
+        adv.append(("☔", f"{'Rain expected right now' if d['rain']['now'] else f'Rain expected around {d['rain']['start'] % 12 or 12}:00'} - take an umbrella."))
+        adv.append(("🧺", "Not a good day to dry clothes outside."))
+    else: adv.append(("🧺", "Dry day ahead—good for drying clothes outside."))
     d["advice"] = adv
 
-    d["theme"] = "festival" if any(any(f in str(e).lower() for f in ["diwali","deepavali","pongal","new year","ugadi","navratri"]) for e in d["today"]) else "default"
     return d
 
 def render_png(html_str, path, selector=".card"):
@@ -238,9 +224,7 @@ def render_png(html_str, path, selector=".card"):
         page = b.new_page(viewport={"width": 840, "height": 100})
         page.set_content(html_str)
         try: page.locator(selector).screenshot(path=path)
-        except:
-            try: page.locator(".rain-bg").screenshot(path=path)
-            except: page.locator(".b").screenshot(path=path)
+        except: page.screenshot(path=path, full_page=True)
         b.close()
     return path
 
@@ -266,11 +250,11 @@ def main():
     
     render_png(ui.card_weather(d), "weather.png")
     send_photo("weather.png", "1/3: Today's Weather & Outlook 🌦️")
-    time.sleep(60)
+    time.sleep(10)
 
     render_png(ui.card_advice(d), "advice.png")
     send_photo("advice.png", "2/3: Panchangam & Daily Advice 🪷")
-    time.sleep(60)
+    time.sleep(10)
 
     render_png(ui.card_events(d), "events.png")
     send_photo("events.png", "3/3: Upcoming Events & Bills 📅")
@@ -278,9 +262,9 @@ def main():
     for i in d["today"]:
         if i["kind"] == "birthday":
             try:
-                render_png(ui.build_birthday_html(i["name"], i["age"]), "birthday.png", ".b")
+                render_png(ui.build_birthday_html(i["name"], i["age"]), "birthday.png", ".b-card")
                 send_photo("birthday.png", f"Happy Birthday {i['name']}! 🎉")
-            except: pass
+            except Exception as e: print("Birthday render failed:", e)
 
 if __name__ == "__main__":
     main()
