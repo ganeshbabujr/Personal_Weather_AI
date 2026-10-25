@@ -6,13 +6,14 @@ FONT = "https://fonts.googleapis.com/css2?family=Inter:wght@400;550;630;650;700;
 CSS = """
 :root {
   --ink: #172a3a; --muted: #6c7d8b; --paper: #ffffff; --canvas: #f4f7f6;
-  --teal: #167d73; --teal-dark: #105d58; --teal-soft: #e8f5f1;
-  --amber: #bd7527; --amber-soft: #fff4de;
+  --teal: #167d73; --amber: #bd7527; --amber-soft: #fff4de;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: transparent; color: var(--ink); font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; width: 480px; padding: 15px; }
+/* Reset body so Playwright tightly crops the .card element */
+body { background: transparent; color: var(--ink); font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
 
-.dash-card { background: var(--paper); border: 1px solid #e7eceb; border-radius: 28px; box-shadow: 0 12px 30px rgba(27,48,60,.06); overflow: hidden; width: 100%; margin-bottom: 15px; }
+/* Base Card applied to ALL templates for perfect cropping */
+.card { width: 460px; background: var(--paper); border-radius: 28px; box-shadow: 0 12px 30px rgba(27,48,60,.06); overflow: hidden; border: 1px solid #e7eceb; }
 
 /* Weather Card */
 .weather-card { position: relative; isolation: isolate; padding: 28px 24px; color: #f7fbff; background: linear-gradient(125deg,#193747 0%,#20566a 54%,#2c7880 100%); border: 0; }
@@ -20,12 +21,12 @@ body { background: transparent; color: var(--ink); font-family: 'Inter', sans-se
 .location-label { color: #d1e3e6; font-size: 14px; font-weight: 750; text-transform: uppercase; letter-spacing: .08em; display: flex; align-items: center; gap: 8px; margin-bottom: 20px; }
 .location-label svg { width: 16px; height: 16px; color: #aee3d3; }
 .weather-main { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-.temperature { font-size: 88px; line-height: .9; letter-spacing: -.06em; font-weight: 350; }
+.temperature { font-size: 92px; line-height: .9; letter-spacing: -.06em; font-weight: 400; }
 .temperature sup { font-size: .4em; vertical-align: top; margin-left: 4px; }
-.condition { margin-top: 12px; font-size: 22px; font-weight: 700; }
-.feels { margin-top: 8px; font-size: 14px; color: #c7dbdf; }
+.condition { margin-top: 12px; font-size: 24px; font-weight: 700; }
+.feels { margin-top: 8px; font-size: 15px; color: #c7dbdf; }
 
-.quick-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+.quick-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 24px; }
 .quick-stat { padding: 14px; border: 1px solid #ffffff20; background: #ffffff12; border-radius: 18px; backdrop-filter: blur(6px); }
 .quick-label { display: flex; align-items: center; gap: 6px; color: #c9dfe1; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
 .quick-label svg { width: 14px; height: 14px; color: #abe2d4; }
@@ -42,7 +43,7 @@ body { background: transparent; color: var(--ink); font-family: 'Inter', sans-se
 .chance strong { display: block; margin-top: 4px; color: #fff; font-size: 22px; }
 
 .hourly-head { margin-bottom: 12px; }
-.hourly-head strong { font-size: 16px; font-weight: 750; display: block; }
+.hourly-head strong { font-size: 16px; font-weight: 750; display: block; color: #fff; }
 .hourly-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
 .hour { padding: 10px 6px; text-align: center; border: 1px solid #ffffff1d; border-radius: 16px; background: #ffffff0c; }
 .hour time { display: block; color: #c9dfe0; font-size: 11px; font-weight: 750; }
@@ -82,7 +83,7 @@ body { background: transparent; color: var(--ink); font-family: 'Inter', sans-se
 .event:last-child { border-bottom: 0; }
 .event-icon { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 12px; background: #f5f8f7; font-size: 20px; }
 .event-name { font-size: 15px; font-weight: 750; color: #172a3a; }
-.event-badge { padding: 8px 10px; color: #a45c2d; background: #fff2e9; border: 1px solid #f6e5da; border-radius: 10px; font-size: 11px; font-weight: 820; white-space: nowrap; }
+.event-badge { padding: 8px 10px; color: #a45c2d; background: #fff2e9; border: 1px solid #f6e5da; border-radius: 10px; font-size: 11px; font-weight: 820; white-space: nowrap; text-transform: uppercase; }
 .event-badge.upcoming { color: #677c8a; background: #f1f5f8; border-color: #e8edf2; }
 
 .advice { display: grid; grid-template-columns: 40px minmax(0,1fr); gap: 14px; align-items: start; padding: 16px; border: 1px solid #edf0ef; border-radius: 18px; background: #fafbfa; margin-bottom: 12px; }
@@ -114,8 +115,7 @@ def card_weather(d):
     else: big_icon = "☁️"
 
     aqi_name = {1: "Good", 2: "Fair", 3: "Moderate", 4: "Poor", 5: "Very poor"}.get(d["aqi"], "Unknown")
-    uv_v = f"{d['uv']:.0f}" if d.get("uv") else "0"
-
+    
     rain_window = ""
     if d.get("rain"):
         start = "Now" if d['rain']['now'] else f"{d['rain']['start']%12 or 12}:00 {'AM' if d['rain']['start']<12 else 'PM'}"
@@ -136,7 +136,7 @@ def card_weather(d):
                 count += 1
 
     return template(f"""
-      <article class="dash-card weather-card">
+      <article class="card weather-card">
         <div class="location-label"><svg viewBox="0 0 24 24"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>{d['city']} WEATHER</div>
         <div class="weather-main">
           <div><div class="temperature">{d['temp']:.0f}<sup>°</sup></div><div class="condition">{d['cond']}</div><div class="feels">Feels {d['feels']:.0f}° &middot; H:{d['t_max']:.0f}° L:{d['t_min']:.0f}°</div></div>
@@ -158,7 +158,6 @@ def card_weather(d):
 def card_advice(d):
     p = d.get("panchangam", {})
     
-    # Process Advice List
     adv_html = ""
     titles = {"☀️": "Sun Protection", "🌡️": "Heat Advisory", "☔": "Rain Alert", "🧺": "Outdoor Plans"}
     for icon, text in d["advice"]:
@@ -175,7 +174,7 @@ def card_advice(d):
         </div>"""
 
     return template(f"""
-      <article class="dash-card calendar-card">
+      <article class="card calendar-card">
         <div class="card-title"><div class="title-icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M16 3v4M8 3v4M3 10h18"></path><path d="M8 14h.01M12 14h.01M16 14h.01"></path></svg></div><h2>Daily Guide & Panchangam</h2></div>
         
         <div class="panchangam-hero">
@@ -209,8 +208,8 @@ def card_events(d):
     if not up: up = '<div style="font-size:14px;color:var(--muted);padding:10px 0;font-weight:600">No upcoming events found.</div>'
 
     return template(f"""
-      <article class="dash-card calendar-card">
-        <div class="card-title"><div class="title-icon" style="background:#eaf5f0;color:var(--teal)"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"></path></svg></div><h2>Family Calendar</h2></div>
+      <article class="card calendar-card">
+        <div class="card-title"><div class="title-icon" style="background:#eaf5f0;color:#167d73"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"></path></svg></div><h2>Family Calendar</h2></div>
         
         <div class="list-heading">Happening Today</div>
         <ul class="event-list">{tdy}</ul>
@@ -231,39 +230,39 @@ def card_rain_alert(d):
     ta_msg = f"{end_time} வரை மழை தொடர வாய்ப்புள்ளது." if d['rain']['now'] else f"{start} அளவில் மழை தொடங்கலாம்."
 
     return template(f"""
-    <div class="dash-card" style="background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:40px 30px;color:#fff;text-align:center;border:none">
+    <article class="card" style="background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:40px 30px;color:#fff;text-align:center;border:none">
         <div style="font-size:120px;margin-bottom:20px;filter:drop-shadow(0 15px 25px rgba(0,0,0,0.5))">⛈️</div>
-        <div style="font-size:36px;font-weight:800;color:#fca5a5;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">Sudden Rain Alert</div>
-        <div style="font-size:20px;color:#cbd5e1;font-weight:600;margin-bottom:30px">திடீர் மழை எச்சரிக்கை</div>
+        <div style="font-size:32px;font-weight:800;color:#fca5a5;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">Sudden Rain Alert</div>
+        <div style="font-size:18px;color:#cbd5e1;font-weight:600;margin-bottom:30px">திடீர் மழை எச்சரிக்கை</div>
         
         <div style="display:flex;gap:15px;margin-bottom:30px">
             <div style="flex:1;background:rgba(255,255,255,0.05);padding:20px;border-radius:20px;border:1px solid rgba(255,255,255,0.1)">
-                <div style="font-size:14px;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:10px">Start Time</div>
-                <div style="font-size:28px;color:#38bdf8;font-weight:800">{start}</div>
+                <div style="font-size:12px;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:10px">Start Time</div>
+                <div style="font-size:24px;color:#38bdf8;font-weight:800">{start}</div>
             </div>
             <div style="flex:1;background:rgba(255,255,255,0.05);padding:20px;border-radius:20px;border:1px solid rgba(255,255,255,0.1)">
-                <div style="font-size:14px;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:10px">Probability</div>
-                <div style="font-size:28px;color:#38bdf8;font-weight:800">{chance}%</div>
+                <div style="font-size:12px;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:10px">Probability</div>
+                <div style="font-size:24px;color:#38bdf8;font-weight:800">{chance}%</div>
             </div>
         </div>
         
         <div style="background:linear-gradient(90deg, rgba(56,189,248,0.15) 0%, rgba(56,189,248,0) 100%);border-left:4px solid #38bdf8;padding:24px;border-radius:12px;text-align:left">
-            <div style="font-size:20px;font-weight:700;color:#f8fafc;margin-bottom:12px">{en_msg}</div>
-            <div style="font-size:18px;color:#cbd5e1;font-weight:600">{ta_msg}</div>
+            <div style="font-size:18px;font-weight:700;color:#f8fafc;margin-bottom:12px">{en_msg}</div>
+            <div style="font-size:16px;color:#cbd5e1;font-weight:600">{ta_msg}</div>
         </div>
-    </div>
+    </article>
     """)
 
 def build_birthday_html(name, age):
     age_line = f"Turns {age} today!" if age else "Wishing you a wonderful year ahead!"
     return template(f"""
-    <div class="dash-card" style="background:linear-gradient(135deg,#7561af 0%,#a585cf 100%);padding:80px 30px;text-align:center;position:relative;overflow:hidden;border:none">
+    <article class="card" style="background:linear-gradient(135deg,#7561af 0%,#a585cf 100%);padding:80px 30px;text-align:center;position:relative;overflow:hidden;border:none">
         <div style="position:absolute;top:-50px;left:-50px;width:250px;height:250px;background:radial-gradient(circle,rgba(255,255,255,0.2) 0%,transparent 70%);border-radius:50%;z-index:1"></div>
         <div style="position:absolute;bottom:-80px;right:-50px;width:300px;height:300px;background:radial-gradient(circle,rgba(255,255,255,0.15) 0%,transparent 70%);border-radius:50%;z-index:1"></div>
         
         <div style="font-size:130px;margin-bottom:20px;filter:drop-shadow(0 10px 20px rgba(0,0,0,0.2));position:relative;z-index:2">🎂</div>
-        <div style="font-size:24px;font-weight:800;color:#e8dff5;letter-spacing:4px;text-transform:uppercase;margin-bottom:16px;position:relative;z-index:2">Happy Birthday</div>
-        <div style="font-size:52px;font-weight:800;color:#ffffff;line-height:1.1;margin-bottom:30px;position:relative;z-index:2;letter-spacing:-1px">{esc(name)}</div>
-        <div style="background:rgba(255,255,255,0.2);color:#ffffff;font-size:18px;font-weight:750;padding:14px 30px;border-radius:50px;display:inline-block;position:relative;z-index:2;backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.3)">{esc(age_line)}</div>
-    </div>
+        <div style="font-size:20px;font-weight:800;color:#e8dff5;letter-spacing:4px;text-transform:uppercase;margin-bottom:16px;position:relative;z-index:2">Happy Birthday</div>
+        <div style="font-size:48px;font-weight:800;color:#ffffff;line-height:1.1;margin-bottom:30px;position:relative;z-index:2;letter-spacing:-1px">{esc(name)}</div>
+        <div style="background:rgba(255,255,255,0.2);color:#ffffff;font-size:16px;font-weight:750;padding:14px 24px;border-radius:50px;display:inline-block;position:relative;z-index:2;backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.3)">{esc(age_line)}</div>
+    </article>
     """)
