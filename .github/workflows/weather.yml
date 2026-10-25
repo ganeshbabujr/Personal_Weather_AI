@@ -19,6 +19,7 @@ jobs:
       EXTRA_ZIPS: ${{ vars.EXTRA_ZIPS }}
       SCHOOL_DROP: ${{ vars.SCHOOL_DROP }}
       SCHOOL_PICKUP: ${{ vars.SCHOOL_PICKUP }}
+      SCHOOL_OFF: ${{ vars.SCHOOL_OFF }}
       WATCH: ${{ vars.WATCH }}
       WIND_LIMIT: ${{ vars.WIND_LIMIT }}
       BRIEF_LANG: ${{ vars.BRIEF_LANG }}
