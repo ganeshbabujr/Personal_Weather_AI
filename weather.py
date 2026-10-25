@@ -202,7 +202,7 @@ def collect():
     for i in range(1, 31):
         day = today + timedelta(days=i)
         for it in items_for(day, events, hol, upcoming=True):
-            it["days_left"] = i  # This fixes the UI missing key error
+            it["days_left"] = i 
             d["upcoming"].append(it)
     d["upcoming"] = d["upcoming"][:8] 
 
@@ -221,7 +221,7 @@ def render_png(html_str, path, selector=".card"):
     from playwright.sync_api import sync_playwright
     with sync_playwright() as p:
         b = p.chromium.launch()
-        page = b.new_page(viewport={"width": 840, "height": 100})
+        page = b.new_page(viewport={"width": 480, "height": 100})
         page.set_content(html_str)
         try: page.locator(selector).screenshot(path=path)
         except: page.screenshot(path=path, full_page=True)
@@ -242,7 +242,7 @@ def main():
         if alerts:
             session.post(f"https://api.telegram.org/bot{os.environ['TELEGRAM_BOT_TOKEN']}/sendMessage", json={"chat_id": os.environ['TELEGRAM_CHAT_ID'], "text": "⚠️ ALERT!\n" + "\n".join(alerts)})
         if rain_alert:
-            render_png(ui.card_rain_alert(d), "alert.png", ".rain-bg")
+            render_png(ui.card_rain_alert(d), "alert.png", ".card")
             send_photo("alert.png", f"⚠️ Sudden Rain Watch for {d['city']}: High chance of rain expected shortly!")
         return
 
@@ -262,7 +262,7 @@ def main():
     for i in d["today"]:
         if i["kind"] == "birthday":
             try:
-                render_png(ui.build_birthday_html(i["name"], i["age"]), "birthday.png", ".b-card")
+                render_png(ui.build_birthday_html(i["name"], i["age"]), "birthday.png", ".card")
                 send_photo("birthday.png", f"Happy Birthday {i['name']}! 🎉")
             except Exception as e: print("Birthday render failed:", e)
 
