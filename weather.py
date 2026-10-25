@@ -226,11 +226,13 @@ def build_advice(d):
     else:
         adv.append(("🧺", "Dry day ahead. Good for drying clothes outside.", "இன்று மழை இல்லை. துணிகளை வெளியே காயவைக்கலாம்."))
 
-    # school drop-off / pick-up
+    # school drop-off / pick-up (skipped on days off, Sunday by default; SCHOOL_OFF=sat,sun to change)
+    off = {x.strip().lower()[:3] for x in (os.environ.get("SCHOOL_OFF") or "sun").split(",") if x.strip()}
+    school_day = now.strftime("%a").lower() not in off
     for env, en_l, ta_l in (("SCHOOL_DROP", "School drop-off", "பள்ளிக்குச் செல்லும் நேரம்"),
                             ("SCHOOL_PICKUP", "School pick-up", "பள்ளி முடியும் நேரம்")):
         v = os.environ.get(env)
-        if not v: continue
+        if not v or not school_day: continue
         try: hh, mm = [int(x) for x in v.split(":")]
         except ValueError: continue
         if (hh, mm) < (now.hour, now.minute): continue
