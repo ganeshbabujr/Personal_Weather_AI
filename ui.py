@@ -254,15 +254,23 @@ def card_rain_alert(d):
     """)
 
 def build_birthday_html(name, age):
-    age_line = f"Turns {age} today!" if age else "Wishing you a wonderful year ahead!"
+    age_line = f"Turns {age} today" if age else "Wishing you a wonderful year ahead"
     return template(f"""
-    <article class="card" style="background:linear-gradient(135deg,#7561af 0%,#a585cf 100%);padding:80px 30px;text-align:center;position:relative;overflow:hidden;border:none">
-        <div style="position:absolute;top:-50px;left:-50px;width:250px;height:250px;background:radial-gradient(circle,rgba(255,255,255,0.2) 0%,transparent 70%);border-radius:50%;z-index:1"></div>
-        <div style="position:absolute;bottom:-80px;right:-50px;width:300px;height:300px;background:radial-gradient(circle,rgba(255,255,255,0.15) 0%,transparent 70%);border-radius:50%;z-index:1"></div>
+    <article class="card" style="background:linear-gradient(145deg, #8b22a1 0%, #e63c5c 50%, #f68928 100%); padding:60px 20px; text-align:center; position:relative; overflow:hidden; border:none; min-height:460px; display:flex; flex-direction:column; justify-content:center; align-items:center;">
         
-        <div style="font-size:130px;margin-bottom:20px;filter:drop-shadow(0 10px 20px rgba(0,0,0,0.2));position:relative;z-index:2">🎂</div>
-        <div style="font-size:20px;font-weight:800;color:#e8dff5;letter-spacing:4px;text-transform:uppercase;margin-bottom:16px;position:relative;z-index:2">Happy Birthday</div>
-        <div style="font-size:48px;font-weight:800;color:#ffffff;line-height:1.1;margin-bottom:30px;position:relative;z-index:2;letter-spacing:-1px">{esc(name)}</div>
-        <div style="background:rgba(255,255,255,0.2);color:#ffffff;font-size:16px;font-weight:750;padding:14px 24px;border-radius:50px;display:inline-block;position:relative;z-index:2;backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.3)">{esc(age_line)}</div>
+        <!-- Floating Elements -->
+        <div style="position:absolute; top:40px; left:40px; font-size:32px; filter:drop-shadow(0 4px 6px rgba(0,0,0,0.15)); transform:rotate(-10deg)">🎈</div>
+        <div style="position:absolute; top:50px; right:40px; font-size:36px; filter:drop-shadow(0 4px 6px rgba(0,0,0,0.15))">🎉</div>
+        <div style="position:absolute; bottom:70px; left:45px; font-size:36px; filter:drop-shadow(0 4px 6px rgba(0,0,0,0.15))">✨</div>
+        <div style="position:absolute; bottom:55px; right:45px; font-size:32px; filter:drop-shadow(0 4px 6px rgba(0,0,0,0.15)); transform:rotate(5deg)">🎈</div>
+        
+        <!-- Main Content -->
+        <div style="font-size:110px; line-height:1; margin-bottom:20px; filter:drop-shadow(0 10px 15px rgba(0,0,0,0.25)); position:relative; z-index:2">🎂</div>
+        <div style="font-size:36px; font-weight:400; color:#ffffff; margin-bottom:10px; position:relative; z-index:2; letter-spacing:1px">Happy Birthday</div>
+        <div style="font-size:72px; font-weight:800; color:#ffffff; line-height:1.1; margin-bottom:25px; position:relative; z-index:2">{esc(name)}</div>
+        <div style="color:#ffffff; font-size:24px; font-weight:500; position:relative; z-index:2; opacity:0.95">{esc(age_line)}</div>
+        
+        <!-- Footer -->
+        <div style="position:absolute; bottom:25px; width:100%; text-align:center; left:0; color:#ffffff; font-size:15px; opacity:0.85; font-weight:500">With love from the family</div>
     </article>
     """)
