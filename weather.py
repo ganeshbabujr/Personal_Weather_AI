@@ -34,7 +34,7 @@ def openmeteo(lat, lon):
     try:
         r = session.get("https://api.open-meteo.com/v1/forecast", params={
             "latitude": lat, "longitude": lon, "timezone": "auto", "forecast_days": 6,
-            "hourly": "precipitation_probability,temperature_2m,uv_index",
+            "hourly": "precipitation_probability,temperature_2m,uv_index,cloud_cover",
             "daily": "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max",
         }, timeout=20)
         r.raise_for_status()
@@ -176,8 +176,17 @@ def collect():
         h = om["hourly"]
         for i, ts in enumerate(h["time"]):
             dt = datetime.fromisoformat(ts)
-            if dt.date() == today: hourly[dt.hour] = {"pop": h["precipitation_probability"][i] or 0, "uv": h["uv_index"][i]}
+            if dt.date() == today: hourly[dt.hour] = {"pop": h["precipitation_probability"][i] or 0, "uv": h["uv_index"][i], "temp": h["temperature_2m"][i], "cloud": h["cloud_cover"][i]}
     d["hourly"] = hourly
+    d["humidity"] = cur["main"].get("humidity")
+
+    d["daily"] = []
+    if om:
+        dl = om["daily"]
+        for i in range(1, len(dl["time"])):
+            d["daily"].append({"date": datetime.fromisoformat(dl["time"][i]).date(), "code": dl["weather_code"][i],
+                               "max": dl["temperature_2m_max"][i], "min": dl["temperature_2m_min"][i],
+                               "pop": dl["precipitation_probability_max"][i] or 0})
 
     wet = [hr for hr in sorted(hourly) if hr >= now.hour and hourly[hr]["pop"] >= 20]
     d["rain"] = None
@@ -210,9 +219,13 @@ def collect():
     if d["uv"] and d["uv"] >= 6: adv.append(("☀️", f"High UV ({d['uv']:.0f}). Please use sun protection or an umbrella."))
     if d["feels"] >= 35: adv.append(("🌡️", "It's feeling quite hot today. Stay hydrated."))
     if d["rain"]:
-        adv.append(("☔", f"{'Rain expected right now' if d['rain']['now'] else f'Rain expected around {d['rain']['start'] % 12 or 12}:00'} - take an umbrella."))
+        adv.append(("☔", f"{'Rain expected right now' if d['rain']['now'] else 'Rain expected around ' + ui.fmt_h(d['rain']['start'])}. Take an umbrella."))
         adv.append(("🧺", "Not a good day to dry clothes outside."))
     else: adv.append(("🧺", "Dry day ahead—good for drying clothes outside."))
+    if d["aqi"] >= 4: adv.append(("😷", "Air quality is poor. Elders and children should stay indoors or wear a mask."))
+    if 40 <= d["wind"] < float(os.environ.get("WIND_LIMIT") or 60): adv.append(("💨", f"Strong winds up to {d['wind']:.0f} km/h. Secure loose items and be careful on two-wheelers."))
+    if d["feels"] <= 20: adv.append(("🧥", "It feels cool today. Keep warm clothes handy."))
+    if d["humidity"] and d["humidity"] >= 85 and not d["rain"]: adv.append(("💧", "Very humid today. Clothes may take longer to dry."))
     d["advice"] = adv
 
     return d
@@ -221,8 +234,10 @@ def render_png(html_str, path, selector=".card"):
     from playwright.sync_api import sync_playwright
     with sync_playwright() as p:
         b = p.chromium.launch()
-        page = b.new_page(viewport={"width": 480, "height": 100})
-        page.set_content(html_str)
+        page = b.new_page(viewport={"width": 400, "height": 100}, device_scale_factor=3)
+        page.set_content(html_str, wait_until="networkidle")
+        try: page.evaluate("document.fonts.ready")
+        except Exception: pass
         try: page.locator(selector).screenshot(path=path)
         except: page.screenshot(path=path, full_page=True)
         b.close()
@@ -243,21 +258,21 @@ def main():
             session.post(f"https://api.telegram.org/bot{os.environ['TELEGRAM_BOT_TOKEN']}/sendMessage", json={"chat_id": os.environ['TELEGRAM_CHAT_ID'], "text": "⚠️ ALERT!\n" + "\n".join(alerts)})
         if rain_alert:
             render_png(ui.card_rain_alert(d), "alert.png", ".card")
-            send_photo("alert.png", f"⚠️ Sudden Rain Watch for {d['city']}: High chance of rain expected shortly!")
+            send_photo("alert.png", ui.caption_rain(d))
         return
 
     session.post(f"https://api.telegram.org/bot{os.environ['TELEGRAM_BOT_TOKEN']}/sendMessage", json={"chat_id": os.environ['TELEGRAM_CHAT_ID'], "text": f"☀️ Good Morning Family! Here is your daily briefing for {d['now'].strftime('%A, %B %d')}."})
     
     render_png(ui.card_weather(d), "weather.png")
-    send_photo("weather.png", "1/3: Today's Weather & Outlook 🌦️")
+    send_photo("weather.png", ui.caption_weather(d))
     time.sleep(10)
 
     render_png(ui.card_advice(d), "advice.png")
-    send_photo("advice.png", "2/3: Panchangam & Daily Advice 🪷")
+    send_photo("advice.png", ui.caption_advice(d))
     time.sleep(10)
 
     render_png(ui.card_events(d), "events.png")
-    send_photo("events.png", "3/3: Upcoming Events & Bills 📅")
+    send_photo("events.png", ui.caption_events(d))
 
     for i in d["today"]:
         if i["kind"] == "birthday":
