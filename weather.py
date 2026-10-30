@@ -421,37 +421,77 @@ def should_send(state, kind, key, cooldown_hours, now):
     if last.get("key") == key: return False
     return (now.timestamp() - last.get("ts", 0)) >= cooldown_hours * 3600
 
+def set_output(name, value):
+    """Pass a value to later steps of the GitHub job."""
+    path = os.environ.get("GITHUB_OUTPUT")
+    if path:
+        with open(path, "a") as f: f.write(f"{name}={value}\n")
+
 def mark_sent(state, kind, key, now):
     state[kind] = {"key": key, "ts": now.timestamp()}
+
+
+# ------------------------------------------------------------------ exact send time
+def seconds_until_send(now=None):
+    """GitHub starts scheduled runs late and unevenly. So the workflow starts early and the
+    script waits here until SEND_AT (e.g. 06:00, local time) minus ~75 s for building the cards.
+    Returns 0 when SEND_AT is not set, when it has already passed, or for a manual run."""
+    target = (os.environ.get("SEND_AT") or "").strip()
+    if not target or os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch": return 0
+    try:
+        from zoneinfo import ZoneInfo
+        tz = ZoneInfo(os.environ.get("SEND_TZ") or "Asia/Kolkata")
+        hh, mm = [int(x) for x in target.split(":")]
+        now = now or datetime.now(tz)
+        goal = now.replace(hour=hh, minute=mm, second=0, microsecond=0) - timedelta(seconds=75)
+        wait = (goal - now).total_seconds()
+        return wait if 0 < wait <= 90 * 60 else 0
+    except Exception as e:
+        print("SEND_AT ignored:", e)
+        return 0
 
 
 # ------------------------------------------------------------------ main
 def main():
     watch = "--watch" in sys.argv
+    if not watch:
+        wait = seconds_until_send()
+        if wait:
+            print(f"Waiting {wait / 60:.1f} min until {os.environ.get('SEND_AT')} before sending")
+            time.sleep(wait)
     d = collect(light=watch)
     now = d["now"]
     chat = os.environ['TELEGRAM_CHAT_ID']
 
     if watch:
+        # Stages (so the GitHub job only installs a browser when a rain card is really needed):
+        #   --watch --check       text alerts + decides if a rain card is due (sets output rain=1)
+        #   --watch --send-rain   builds and sends the rain card
+        #   --watch               both in one go (local use)
+        check, send_rain = "--check" in sys.argv, "--send-rain" in sys.argv
         state = load_state()
         today_key = now.date().isoformat()
         try:
-            red = [a for a in d["alerts"] if a[0] == "red"]
-            wind_alert = next((a for a in red if "wind" in a[1].lower()), None)
-            aqi_alert = next((a for a in red if "air" in a[1].lower()), None)
-            for kind, alert, cooldown in (("wind", wind_alert, 4), ("aqi", aqi_alert, 24)):
-                if alert and should_send(state, kind, today_key, cooldown, now):
-                    tg("sendMessage", json={"chat_id": chat, "text": f"⚠️ {alert[1]}\n{alert[2]}"}).raise_for_status()
-                    mark_sent(state, kind, today_key, now)
+            if not send_rain:
+                red = [a for a in d["alerts"] if a[0] == "red"]
+                wind_alert = next((a for a in red if "wind" in a[1].lower()), None)
+                aqi_alert = next((a for a in red if "air" in a[1].lower()), None)
+                for kind, alert, cooldown in (("wind", wind_alert, 4), ("aqi", aqi_alert, 24)):
+                    if alert and should_send(state, kind, today_key, cooldown, now):
+                        tg("sendMessage", json={"chat_id": chat, "text": f"⚠️ {alert[1]}\n{alert[2]}"}).raise_for_status()
+                        mark_sent(state, kind, today_key, now)
 
             r = d["rain"]
             soon = r and ((r["start"] - now.hour) % 24) <= 2
-            if soon and r["chance"] >= 50 and (r["mm"] >= 0.1):
+            if soon and r["chance"] >= 50 and r["mm"] >= 0.1:
                 key = f"{today_key}-{r['start']}"
                 if should_send(state, "rain", key, 3, now):
-                    render_png(ui.card_rain_alert(d), "alert.png", ".card")
-                    send_photo("alert.png", ui.caption_rain(d))
-                    mark_sent(state, "rain", key, now)
+                    if check:
+                        set_output("rain", "1")
+                    else:
+                        render_png(ui.card_rain_alert(d), "alert.png", ".card")
+                        send_photo("alert.png", ui.caption_rain(d))
+                        mark_sent(state, "rain", key, now)
         finally:
             save_state(state)
         return
