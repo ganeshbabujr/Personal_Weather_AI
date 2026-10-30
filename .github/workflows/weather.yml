@@ -1,8 +1,8 @@
 name: Daily Family Briefing
 
+# Started from outside GitHub (cron-job.org calls the 'dispatches' API), because GitHub's own
+# schedule runs hours late. This is the daily briefing, started by cron-job.org at 5:58 AM IST.
 on:
-  schedule:
-    - cron: "7 0 * * *"         # starts 5:37 AM IST on purpose; the script then waits until SEND_AT
   workflow_dispatch:
 
 jobs:
