@@ -1,8 +1,8 @@
 name: Storm Watch
 
+# Started from outside GitHub (cron-job.org calls the 'dispatches' API), because GitHub's own
+# schedule runs hours late. This is the storm watch, started by cron-job.org every hour.
 on:
-  schedule:
-    - cron: "12 1-16 * * *"     # hourly, 6:42 AM - 10:12 PM IST (off-peak minute)
   workflow_dispatch:
 
 jobs:
