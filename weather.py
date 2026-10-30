@@ -471,6 +471,11 @@ def main():
         check, send_rain = "--check" in sys.argv, "--send-rain" in sys.argv
         state = load_state()
         today_key = now.date().isoformat()
+        sent = []
+        rr = d["rain"]
+        print(f"[{now:%d %b %H:%M}] {d['city']}: wind {d['wind']:.0f} km/h (limit {os.environ.get('WIND_LIMIT') or 60}), "
+              f"AQI {d.get('aqi_val')} (level {d['aqi']}), "
+              + (f"rain {rr['chance']}% from {rr['start']}h to {rr['end']}h, {rr['mm']:.1f} mm" if rr else "no rain expected today"))
         try:
             if not send_rain:
                 red = [a for a in d["alerts"] if a[0] == "red"]
@@ -480,6 +485,7 @@ def main():
                     if alert and should_send(state, kind, today_key, cooldown, now):
                         tg("sendMessage", json={"chat_id": chat, "text": f"⚠️ {alert[1]}\n{alert[2]}"}).raise_for_status()
                         mark_sent(state, kind, today_key, now)
+                        sent.append(f"{kind} alert")
 
             r = d["rain"]
             soon = r and ((r["start"] - now.hour) % 24) <= 2
@@ -488,12 +494,15 @@ def main():
                 if should_send(state, "rain", key, 3, now):
                     if check:
                         set_output("rain", "1")
+                        sent.append("rain card is due")
                     else:
                         render_png(ui.card_rain_alert(d), "alert.png", ".card")
                         send_photo("alert.png", ui.caption_rain(d))
                         mark_sent(state, "rain", key, now)
+                        sent.append("rain card")
         finally:
             save_state(state)
+            print("Result:", ", ".join(sent) if sent else "nothing to send (no new alert needed)")
         return
 
     # ---- daily briefing: ONE album message
