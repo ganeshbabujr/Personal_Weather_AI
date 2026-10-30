@@ -2,7 +2,7 @@ name: Daily Family Briefing
 
 on:
   schedule:
-    - cron: "30 0 * * *"        # 6:00 AM IST (GitHub can start it 10-30 min late at busy times)
+    - cron: "7 0 * * *"         # starts 5:37 AM IST on purpose; the script then waits until SEND_AT
   workflow_dispatch:
 
 jobs:
@@ -24,6 +24,8 @@ jobs:
       WIND_LIMIT: ${{ vars.WIND_LIMIT }}
       BRIEF_LANG: ${{ vars.BRIEF_LANG }}
       BIG_TEXT: ${{ vars.BIG_TEXT }}
+      SEND_AT: ${{ vars.SEND_AT || '06:00' }}
+      SEND_TZ: ${{ vars.SEND_TZ || 'Asia/Kolkata' }}
     steps:
       - uses: actions/checkout@v4
       - name: Get current date
